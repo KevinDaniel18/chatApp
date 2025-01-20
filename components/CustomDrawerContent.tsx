@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   Linking,
 } from "react-native";
-import React from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   DrawerContentScrollView,
   DrawerItem,
@@ -17,11 +17,22 @@ import Avatar from "./Avatar";
 import { useUser } from "@/hooks/user/userContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import BottomConfiguration from "./BottomConfiguration";
+import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 export default function CustomDrawerContent(props: any) {
   const { logout } = useAuthStore();
   const { bottom } = useSafeAreaInsets();
   const { userData } = useUser();
+  const [modalVisible, setModalVisible] = useState(false);
+  const themeContext = useContext(ThemeContext);
+  if (!themeContext) {
+    throw new Error("ThemeContext must be used within a ThemeProvider");
+  }
+
+  const { theme } = themeContext;
+  const dynamicStyles = getStyles(theme);
 
   function contactMe() {
     const linkedinUrl =
@@ -30,33 +41,49 @@ export default function CustomDrawerContent(props: any) {
       console.error("Error opening linkedin", err)
     );
   }
+  
   return (
-    <View style={{ flex: 1 }}>
-      <DrawerContentScrollView {...props} scrollEnabled={false}>
-        <View style={{paddingBottom: 20}}>
+    <View style={[{ flex: 1 }, dynamicStyles.changeBackgroundColor]}>
+      <DrawerContentScrollView {...props} scrollEnabled={false} st>
+        <View style={{ paddingBottom: 20 }}>
           <Avatar size={100} url={userData?.profilePicture!} />
-          <Text style={styles.name}>{userData?.name}</Text>
+          <Text style={[styles.name, dynamicStyles.changeTextColor]}>{userData?.name}</Text>
         </View>
 
         <DrawerItemList {...props} />
 
         <DrawerItem
           label={"Logout"}
+          labelStyle={{ color: theme === "dark" ? "#fff" : "#000" }}
           onPress={logout}
           icon={() => (
-            <MaterialIcons name="exit-to-app" size={24} color="black" />
+            <MaterialIcons
+              name="exit-to-app"
+              size={24}
+              color={theme === "dark" ? "white" : "black"}
+            />
           )}
         />
       </DrawerContentScrollView>
 
       <View style={[styles.footer, { paddingBottom: 20 + bottom }]}>
         <TouchableOpacity onPress={contactMe}>
-          <Text style={{ color: "#1465bb" }}>Contact me</Text>
+          <Text style={{ color: "#1465bb" }}>
+            Contact me
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity>
-          <Ionicons name="settings-outline" size={24} color="black" />
+        <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <Ionicons
+            name="settings-outline"
+            size={24}
+            color={theme === "dark" ? "#fff" : "#000"}
+          />
         </TouchableOpacity>
       </View>
+      <BottomConfiguration
+        modalVisible={modalVisible || false}
+        setModalVisible={() => setModalVisible(false)}
+      />
     </View>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import { router, useFocusEffect, useNavigation } from "expo-router";
 import { AntDesign } from "@expo/vector-icons";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { DrawerActions } from "@react-navigation/native";
+import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 interface User {
   id: number;
@@ -29,6 +31,14 @@ export default function CurrentUsersMsg() {
   const [loading, setLoading] = useState(false);
   const { userId } = useUser();
   const nav = useNavigation();
+
+  const themeContext = useContext(ThemeContext);
+  if (!themeContext) {
+    throw new Error("ThemeContext must be used within a ThemeProvider");
+  }
+
+  const { theme } = themeContext;
+  const dynamicStyles = getStyles(theme);
 
   function onToggle() {
     nav.dispatch(DrawerActions.openDrawer());
@@ -66,7 +76,7 @@ export default function CurrentUsersMsg() {
 
   const renderItem = ({ item }: { item: User }) => (
     <TouchableOpacity
-      style={styles.itemContainer}
+      style={[styles.itemContainer, dynamicStyles.changeBackgroundColor]}
       onPress={() => navigateToChat(item.id, item.name)}
     >
       <Image
@@ -78,7 +88,7 @@ export default function CurrentUsersMsg() {
         style={styles.avatar}
       />
       <View style={styles.userInfo}>
-        <Text style={styles.name}>{item.name}</Text>
+        <Text style={[styles.name, dynamicStyles.changeTextColor]}>{item.name}</Text>
         <Text style={styles.email}>{item.email}</Text>
       </View>
       <View style={styles.stats}>
@@ -91,16 +101,26 @@ export default function CurrentUsersMsg() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <TouchableOpacity onPress={() => router.back()}>
-            <AntDesign name="arrowleft" size={28} color="black" />
+            <AntDesign
+              name="arrowleft"
+              size={28}
+              color={theme === "dark" ? "white" : "black"}
+            />
           </TouchableOpacity>
-          <Text style={styles.text}>Messages</Text>
+          <Text style={[styles.text, dynamicStyles.changeTextColor]}>
+            Messages
+          </Text>
         </View>
         <TouchableOpacity onPress={onToggle}>
-          <FontAwesome name="bars" size={24} color="black" />
+          <FontAwesome
+            name="bars"
+            size={24}
+            color={theme === "dark" ? "white" : "black"}
+          />
         </TouchableOpacity>
       </View>
       {loading ? (
@@ -138,7 +158,6 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 18,
     fontWeight: "bold",
-    backgroundColor: "#ffffff",
     marginLeft: 15,
   },
   listContent: {

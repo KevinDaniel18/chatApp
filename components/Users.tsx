@@ -24,6 +24,8 @@ import {
 } from "expo-router";
 import { useUser } from "@/hooks/user/userContext";
 import { useSocket } from "@/hooks/store/socketStore";
+import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 interface UsersProps {
   id: number;
@@ -46,6 +48,14 @@ export default function Users() {
   const { userId } = useUser();
   const socket = useSocket();
   const { searchText } = useContext(SearchContext);
+
+  const themeContext = useContext(ThemeContext);
+  if (!themeContext) {
+    throw new Error("ThemeContext must be used within a ThemeProvider");
+  }
+
+  const { theme } = themeContext;
+  const dynamicStyles = getStyles(theme);
 
   function navigateToChat(receiverId: number, userName: string) {
     router.push({
@@ -145,7 +155,10 @@ export default function Users() {
             alignSelf: "center",
             margin: 16,
           }
-        : styles.item;
+        : {
+            ...styles.item,
+            backgroundColor: theme === "dark" ? "black" : "white",
+          };
 
     const imageStyle =
       filteredUsers.length === 1
@@ -167,19 +180,34 @@ export default function Users() {
           }
           style={imageStyle}
         />
-        <Text style={styles.name} numberOfLines={1}>
+        <Text
+          style={[styles.name, dynamicStyles.changeTextColor]}
+          numberOfLines={1}
+        >
           {name}
         </Text>
         <View style={styles.icons}>
           <TouchableOpacity onPress={() => navigateToChat(id, name)}>
-            <Feather name="message-square" size={20} color="black" />
+            <Feather
+              name="message-square"
+              size={20}
+              color={theme === "dark" ? "white" : "black"}
+            />
           </TouchableOpacity>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <TouchableOpacity onPress={() => toggleLike(id)}>
               <AntDesign
                 name={isLiked ? "heart" : "hearto"}
                 size={20}
-                color={isLiked ? "red" : "black"}
+                color={
+                  theme === "dark"
+                    ? isLiked
+                      ? "red"
+                      : "white"
+                    : isLiked
+                    ? "red"
+                    : "black"
+                }
               />
             </TouchableOpacity>
             <Text>{likes}</Text>
@@ -190,7 +218,9 @@ export default function Users() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, dynamicStyles.changeBackgroundColor]}
+    >
       {loading ? (
         <ActivityIndicator size="large" style={{ flex: 1, marginTop: 20 }} />
       ) : filteredUsers.length === 0 ? (

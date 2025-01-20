@@ -79,6 +79,8 @@ export default function Avatar({ url, size = 150 }: Props) {
     try {
       setModalVisible(false);
       const { data: session } = await supabase.auth.getSession();
+      console.log("sesion:", session);
+
       if (!session) {
         throw new Error("Debes estar autenticado para subir una imagen");
       }
@@ -135,7 +137,11 @@ export default function Avatar({ url, size = 150 }: Props) {
         console.log("datos de la imagen", res.data);
 
         setAvatarUrl(publicUrl);
-        showToast("Profile photo uploaded successfully")
+        // setUserData((prev) => ({
+        //   ...prev!,
+        //   profilePicture: publicUrl,
+        // }));
+        showToast("Profile photo uploaded successfully");
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -177,8 +183,9 @@ export default function Avatar({ url, size = 150 }: Props) {
       }
 
       await removeProfilePicture(userId!);
+      
       setAvatarUrl(null);
-
+    
       Alert.alert("Foto de perfil eliminada con éxito.");
     } catch (error) {
       if (error instanceof Error) {

@@ -30,12 +30,22 @@ const useAuthStore = create<AuthState>((set, get) => ({
   initialize: async () => {
     try {
       const token = await SecureStore.getItemAsync("token");
-
+      const supabaseAccessToken = await SecureStore.getItemAsync(
+        "ACCESS_TOKEN"
+      );
+      const supabaseRefreshToken = await SecureStore.getItemAsync(
+        "REFRESH_TOKEN"
+      );
       if (token) {
         set({
           token,
           isAuthenticated: true,
           isLoading: false,
+        });
+
+        await supabase.auth.setSession({
+          access_token: supabaseAccessToken!,
+          refresh_token: supabaseRefreshToken!,
         });
       } else {
         set({ isLoading: false });
@@ -156,17 +166,26 @@ const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ isLoading: true });
 
-      // Clear stored authentication data
-      await SecureStore.deleteItemAsync("token");
-
       set({
         token: null,
         isAuthenticated: false,
         isLoading: false,
       });
 
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      await SecureStore.deleteItemAsync("token");
+      await SecureStore.deleteItemAsync("USER_ID");
+      await SecureStore.deleteItemAsync("ACCESS_TOKEN");
+      await SecureStore.deleteItemAsync("REFRESH_TOKEN");
+
       const waitForRoot = () =>
         new Promise<void>((resolve) => {
+          if (get().rootReady) {
+            resolve();
+            return;
+          }
+
           const interval = setInterval(() => {
             if (get().rootReady) {
               clearInterval(interval);
@@ -176,6 +195,8 @@ const useAuthStore = create<AuthState>((set, get) => ({
         });
 
       await waitForRoot();
+
+      set({ isLoading: false });
 
       router.replace("/sign-in");
     } catch (error) {

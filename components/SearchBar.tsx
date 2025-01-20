@@ -3,25 +3,43 @@ import React, { useContext, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { SearchContext } from "@/hooks/search/searchContext";
+import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 export default function SearchBar({ navigation, route, options }: any) {
   const [showSearch, setShowSearch] = useState(false);
-  const {searchText, setSearchText} = useContext(SearchContext)
+  const { searchText, setSearchText } = useContext(SearchContext);
+
+  const themeContext = useContext(ThemeContext);
+  if (!themeContext) {
+    throw new Error("ThemeContext must be used within a ThemeProvider");
+  }
+
+  const { theme } = themeContext;
+  const dynamicStyles = getStyles(theme);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
       <View style={styles.content}>
         {!showSearch ? (
           <>
             <Pressable onPress={navigation.toggleDrawer}>
-              <Ionicons name="menu" size={24} color="black" />
+              <Ionicons
+                name="menu"
+                size={24}
+                color={theme === "dark" ? "white" : "black"}
+              />
             </Pressable>
-            <Text style={styles.title}>{options.title}</Text>
+            <Text style={[styles.title, dynamicStyles.changeTextColor]}>{options.title}</Text>
             <Pressable
               onPress={() => setShowSearch(true)}
               style={styles.searchIcon}
             >
-              <AntDesign name="search1" size={24} color="black" />
+              <AntDesign
+                name="search1"
+                size={24}
+                color={theme === "dark" ? "white" : "black"}
+              />
             </Pressable>
           </>
         ) : (
@@ -30,7 +48,7 @@ export default function SearchBar({ navigation, route, options }: any) {
               style={styles.searchInput}
               placeholder="Search..."
               value={searchText}
-              onChangeText={(text)=>setSearchText(text)}
+              onChangeText={(text) => setSearchText(text)}
               autoFocus
             />
             <Pressable
@@ -39,7 +57,11 @@ export default function SearchBar({ navigation, route, options }: any) {
                 setSearchText("");
               }}
             >
-              <AntDesign name="close" size={24} color="black" />
+              <AntDesign
+                name="close"
+                size={24}
+                color={theme === "dark" ? "white" : "black"}
+              />
             </Pressable>
           </View>
         )}

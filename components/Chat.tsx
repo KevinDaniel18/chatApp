@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useSocket } from "@/hooks/store/socketStore";
 import { useUser } from "@/hooks/user/userContext";
 import { getMessages } from "@/endpoints/endpoint";
@@ -15,7 +15,9 @@ import { format, parseISO } from "date-fns";
 import { enUS } from "date-fns/locale";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router, useFocusEffect } from "expo-router";
+import { router } from "expo-router";
+import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 export default function Chat({ receiverId, userName }: any) {
   const [sendMessage, setSendMessage] = useState("");
@@ -27,6 +29,15 @@ export default function Chat({ receiverId, userName }: any) {
   const { userId } = useUser();
   const insets = useSafeAreaInsets();
   const [fadeAnim] = useState(new Animated.Value(0));
+
+  const themeContext = useContext(ThemeContext);
+  if (!themeContext) {
+    throw new Error("ThemeContext must be used within a ThemeProvider");
+  }
+
+  const { theme } = themeContext;
+  const dynamicStyles = getStyles(theme);
+
   useEffect(() => {
     async function loadMessages() {
       try {
@@ -152,14 +163,20 @@ export default function Chat({ receiverId, userName }: any) {
   };
 
   const groupedMessages = groupMessagesByDate(messages);
- 
+
   return (
-    <View style={styles.container}>
-      <View style={[styles.header, {marginTop: insets.top}]}>
+    <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
+      <View style={[styles.header, { marginTop: insets.top }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <AntDesign name="arrowleft" size={28} color="black" />
+          <AntDesign
+            name="arrowleft"
+            size={28}
+            color={theme === "dark" ? "white" : "black"}
+          />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{userName}</Text>
+        <Text style={[styles.headerTitle, dynamicStyles.changeTextColor]}>
+          {userName}
+        </Text>
       </View>
 
       <View style={styles.content}>
@@ -213,16 +230,36 @@ export default function Chat({ receiverId, userName }: any) {
       </View>
 
       <View
-        style={[styles.chatInputContainer, { marginBottom: insets.bottom }]}
+        style={[
+          styles.chatInputContainer,
+          dynamicStyles.changeBackgroundColor,
+          { marginBottom: insets.bottom },
+        ]}
       >
         <TextInput
           value={sendMessage}
           onChangeText={setSendMessage}
           placeholder="Write a message..."
-          style={styles.input}
+          placeholderTextColor={theme === "dark" ? "#6f6f6f" : "#000"}
+          style={[styles.input, { color: theme === "dark" ? "#fff" : "#000" }]}
         />
-        <TouchableOpacity onPress={handleSendMessage}>
-          <AntDesign name="arrowup" size={24} color="black" />
+        <TouchableOpacity
+          onPress={handleSendMessage}
+          disabled={!sendMessage.trim()}
+        >
+          <AntDesign
+            name="arrowup"
+            size={24}
+            color={
+              theme === "dark"
+                ? sendMessage.trim()
+                  ? "white"
+                  : "gray"
+                : sendMessage.trim()
+                ? "black"
+                : "gray"
+            }
+          />
         </TouchableOpacity>
       </View>
     </View>

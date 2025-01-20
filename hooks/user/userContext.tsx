@@ -18,7 +18,7 @@ interface UserData {
 interface UserContextType {
   userData: UserData | null;
   userId: number | null;
-  profilePicture: string;
+  profilePicture: string | null;
   setUserData: React.Dispatch<React.SetStateAction<UserData | null>>;
   setProfilePicture: React.Dispatch<React.SetStateAction<string>>;
   fetchUser: () => void;

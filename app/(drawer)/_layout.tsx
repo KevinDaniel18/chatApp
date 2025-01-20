@@ -5,21 +5,28 @@ import { Redirect } from "expo-router";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import CustomDrawerContent from "@/components/CustomDrawerContent";
-import { UserProvider, useUser } from "@/hooks/user/userContext";
 import SearchBar from "@/components/SearchBar";
 import { SearchProvider } from "@/hooks/search/searchContext";
 import { useSocketStore } from "@/hooks/store/socketStore";
-import { useEffect } from "react";
+import { useContext, useEffect } from "react";
 import { usePushNotifications } from "@/notifications/setupNotifications";
 import { saveNotificationToken } from "@/endpoints/endpoint";
 import * as SecureStore from "expo-secure-store";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 export default function DrawerLayout() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { initializeSocket } = useSocketStore((state) => state);
   const { expoPushToken, notification } = usePushNotifications();
+  const themeContext = useContext(ThemeContext);
+  if (!themeContext) {
+    throw new Error("ThemeContext must be used within a ThemeProvider");
+  }
 
+  const { theme } = themeContext;
+  const dynamicStyles = getStyles(theme);
   useEffect(() => {
     async function expoPush() {
       try {
@@ -48,12 +55,16 @@ export default function DrawerLayout() {
   return isAuthenticated ? (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SearchProvider>
-        <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+        <SafeAreaView
+          style={[{ flex: 1 }, dynamicStyles.changeBackgroundColor]}
+        >
           <Drawer
             drawerContent={CustomDrawerContent}
             screenOptions={{
               drawerActiveBackgroundColor: "#E8F5E9",
               drawerActiveTintColor: "black",
+              drawerInactiveTintColor:
+                theme === "dark" ? "#dcdcdc" : "rgba(28, 28, 30, 0.68)",
             }}
           >
             <Drawer.Screen
