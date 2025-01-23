@@ -50,3 +50,22 @@ export function getUsersSentMessages(userId: number) {
 export function getMessages(senderId: number, receiverId: number) {
   return instance.get(`/messages/${senderId}/${receiverId}`);
 }
+
+export function getUsersWithPendingMessages(userId: number) {
+  return instance.get("/user/pending-messages", { params: { userId } });
+}
+
+export function markPendingMessagesAsRead(userId: number, senderId: number) {
+  return instance.post("/messages/markAsRead", { userId, senderId });
+}
+
+export function deleteMessageForUser(userId: number, receiverId: number) {
+  return instance.post("/messages/delete-message-for-user", {
+    userId,
+    receiverId,
+  });
+}
+
+export function updateUser(userId: number, data: object) {
+  return instance.post("/user/update-user", { userId, ...data });
+}

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useSocket } from "@/hooks/store/socketStore";
 import { useUser } from "@/hooks/user/userContext";
 import { getMessages } from "@/endpoints/endpoint";
@@ -15,9 +15,11 @@ import { format, parseISO } from "date-fns";
 import { enUS } from "date-fns/locale";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
-import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { router, useFocusEffect } from "expo-router";
+import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
+import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
+import ChatOptionModal from "./ChatOptionModal";
 
 export default function Chat({ receiverId, userName }: any) {
   const [sendMessage, setSendMessage] = useState("");
@@ -25,32 +27,38 @@ export default function Chat({ receiverId, userName }: any) {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
     null
   );
+  const [openModal, setOpenModal] = useState(false);
   const socket = useSocket();
   const { userId } = useUser();
   const insets = useSafeAreaInsets();
   const [fadeAnim] = useState(new Animated.Value(0));
 
-  const themeContext = useContext(ThemeContext);
-  if (!themeContext) {
-    throw new Error("ThemeContext must be used within a ThemeProvider");
-  }
+  const { theme } = useTheme();
 
-  const { theme } = themeContext;
   const dynamicStyles = getStyles(theme);
 
-  useEffect(() => {
-    async function loadMessages() {
-      try {
-        const msgData = await getMessages(userId!, Number(receiverId));
-        //console.log(msgData.data);
+  useFocusEffect(
+    useCallback(() => {
+      if (!openModal) {
+        async function loadMessages() {
+          try {
+            const msgData = await getMessages(userId!, Number(receiverId));
+            //console.log(msgData.data);
+            
+            console.log(msgData.data.length);
+            const filteredMessages = msgData.data.filter(
+              (message: any) => !message.deletedForUserIds.includes(userId!)
+            );
+            setMessages(filteredMessages);
+          } catch (error) {
+            console.error("error", error);
+          }
+        }
 
-        setMessages(msgData.data);
-      } catch (error) {
-        console.error("error", error);
+        loadMessages();
       }
-    }
-    loadMessages();
-  }, [userId, receiverId]);
+    }, [openModal, userId, receiverId])
+  );
 
   useEffect(() => {
     async function joinUserRoom() {
@@ -118,12 +126,12 @@ export default function Chat({ receiverId, userName }: any) {
       const newMessage = {
         senderId: userId,
         receiverId: Number(receiverId),
-        content: sendMessage,
+        content: sendMessage.trim(),
         createdAt: new Date().toISOString(),
       };
 
       socket.emit("sendMessage", newMessage);
-
+      socket.emit("enterChat", { userId, receiverId });
       setSendMessage("");
     }
   }
@@ -167,16 +175,25 @@ export default function Chat({ receiverId, userName }: any) {
   return (
     <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
       <View style={[styles.header, { marginTop: insets.top }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <AntDesign
-            name="arrowleft"
-            size={28}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <AntDesign
+              name="arrowleft"
+              size={28}
+              color={theme === "dark" ? "white" : "black"}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, dynamicStyles.changeTextColor]}>
+            {userName}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={() => setOpenModal(true)}>
+          <SimpleLineIcons
+            name="options-vertical"
+            size={24}
             color={theme === "dark" ? "white" : "black"}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, dynamicStyles.changeTextColor]}>
-          {userName}
-        </Text>
       </View>
 
       <View style={styles.content}>
@@ -262,6 +279,14 @@ export default function Chat({ receiverId, userName }: any) {
           />
         </TouchableOpacity>
       </View>
+      <ChatOptionModal
+        visible={openModal}
+        onClose={() => setOpenModal(false)}
+        senderId={userId}
+        receiverId={receiverId}
+        messages={messages}
+        setMessages={setMessages}
+      />
     </View>
   );
 }
@@ -278,6 +303,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
     marginHorizontal: 20,
+    justifyContent: "space-between",
   },
   headerTitle: {
     fontSize: 18,

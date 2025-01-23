@@ -42,6 +42,10 @@ export default function RootLayout() {
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen
+                  name="user/update-user"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
                   name="sign-in"
                   options={{ animation: "fade", headerShown: false }}
                 />

@@ -1,4 +1,4 @@
-import React, { ReactNode, createContext, useState, useEffect } from "react";
+import React, { ReactNode, createContext, useState, useEffect, useContext } from "react";
 import { Appearance } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
@@ -39,6 +39,14 @@ export const ThemeProvider: React.FC<UserProvider> = ({ children }) => {
       {children}
     </ThemeContext.Provider>
   );
+};
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("useTheme must be used within a ThemeProvider");
+  }
+  return context;
 };
 
 export default ThemeContext;

@@ -8,16 +8,15 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { getUsersSentMessages } from "@/endpoints/endpoint";
+import { getUsersWithPendingMessages } from "@/endpoints/endpoint";
 import { useUser } from "@/hooks/user/userContext";
-import { router, useFocusEffect, useNavigation } from "expo-router";
-import { AntDesign } from "@expo/vector-icons";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { DrawerActions } from "@react-navigation/native";
+import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
+import BottomConfirmMessage from "./BottomConfirmMessage";
+import { useSocket } from "@/hooks/store/socketStore";
 
-interface User {
+export interface User {
   id: number;
   name: string;
   email: string;
@@ -26,43 +25,60 @@ interface User {
   createdAt: string;
 }
 
-export default function CurrentUsersMsg() {
+export default function PendingMessages() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [firstMsg, setFirstMsg] = useState(null);
+
   const { userId } = useUser();
+  const socket = useSocket();
 
   const { theme } = useTheme();
 
   const dynamicStyles = getStyles(theme);
-
-  function navigateToChat(receiverId: number, userName: string) {
-    router.push({
-      pathname: "/user/chat",
-      params: { receiverId, userName },
-    });
-  }
 
   useFocusEffect(
     useCallback(() => {
       async function fetchCurrentUsersMsg() {
         setLoading(true);
         try {
-          const res = await getUsersSentMessages(userId!);
-          setUsers(res.data);
+          const res = await getUsersWithPendingMessages(userId!);
+          console.log(JSON.stringify(res.data));
+          setFirstMsg(res.data.firstPendingMessage);
+          setUsers(res.data.users);
         } catch (error) {
           console.error("error en current", error);
         } finally {
           setLoading(false);
         }
       }
+
       fetchCurrentUsersMsg();
     }, [userId])
   );
 
+  function openModal(receiverId: number, userName: string) {
+    if (firstMsg !== null) {
+      setModalVisible(true);
+    } else {
+      router.push({
+        pathname: "/user/chat",
+        params: { receiverId, userName },
+      });
+    }
+  }
+
   const renderItem = ({ item }: { item: User }) => (
     <TouchableOpacity
       style={[styles.itemContainer, dynamicStyles.changeBackgroundColor]}
-      onPress={() => navigateToChat(item.id, item.name)}
+      onPress={() => {
+        openModal(item.id, item.name);
+        setSelectedUser(item);
+      }}
+
+      // onPress={() => navigateToChat(item.id, item.name)}
     >
       <Image
         source={
@@ -100,7 +116,7 @@ export default function CurrentUsersMsg() {
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
           <Text style={[dynamicStyles.changeTextColor, { color: "gray" }]}>
-            No sent messages.
+            No pending messages.
           </Text>
         </View>
       ) : (
@@ -111,6 +127,11 @@ export default function CurrentUsersMsg() {
           contentContainerStyle={styles.listContent}
         />
       )}
+      <BottomConfirmMessage
+        modalVisible={modalVisible || false}
+        setModalVisible={() => setModalVisible(false)}
+        selectedUser={selectedUser}
+      />
     </View>
   );
 }

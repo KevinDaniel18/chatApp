@@ -1,22 +1,40 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import React, { useContext, useState } from "react";
+import {
+  BackHandler,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import React, { useContext, useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { SearchContext } from "@/hooks/search/searchContext";
-import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
 
-export default function SearchBar({ navigation, route, options }: any) {
+export default function SearchBar({ navigation, options }: any) {
   const [showSearch, setShowSearch] = useState(false);
   const { searchText, setSearchText } = useContext(SearchContext);
 
-  const themeContext = useContext(ThemeContext);
-  if (!themeContext) {
-    throw new Error("ThemeContext must be used within a ThemeProvider");
-  }
-
-  const { theme } = themeContext;
+  const { theme } = useTheme();
   const dynamicStyles = getStyles(theme);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        if (showSearch) {
+          setShowSearch(false);
+          setSearchText("");
+          return true;
+        }
+        return false;
+      }
+    );
+
+    return () => backHandler.remove();
+  }, [showSearch]);
 
   return (
     <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
@@ -30,7 +48,9 @@ export default function SearchBar({ navigation, route, options }: any) {
                 color={theme === "dark" ? "white" : "black"}
               />
             </Pressable>
-            <Text style={[styles.title, dynamicStyles.changeTextColor]}>{options.title}</Text>
+            <Text style={[styles.title, dynamicStyles.changeTextColor]}>
+              {options.title}
+            </Text>
             <Pressable
               onPress={() => setShowSearch(true)}
               style={styles.searchIcon}
@@ -50,6 +70,8 @@ export default function SearchBar({ navigation, route, options }: any) {
               value={searchText}
               onChangeText={(text) => setSearchText(text)}
               autoFocus
+              autoCorrect={false}
+              textContentType="none"
             />
             <Pressable
               onPress={() => {

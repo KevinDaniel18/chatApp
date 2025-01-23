@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import React, { useState } from "react";
 import useAuthStore from "@/hooks/store/authStore";
+import { useTheme } from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 interface RegisterProps {
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -19,6 +21,9 @@ export default function Register({ register }: RegisterProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const isLoading = useAuthStore((state) => state.isLoading);
+  const { theme } = useTheme();
+
+  const dynamicStyles = getStyles(theme);
 
   async function handleLogin() {
     if (!name || !email || !password) {

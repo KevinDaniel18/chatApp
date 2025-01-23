@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   Linking,
 } from "react-native";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   DrawerContentScrollView,
   DrawerItem,
@@ -18,7 +18,7 @@ import { useUser } from "@/hooks/user/userContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import BottomConfiguration from "./BottomConfiguration";
-import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
 
 export default function CustomDrawerContent(props: any) {
@@ -26,12 +26,8 @@ export default function CustomDrawerContent(props: any) {
   const { bottom } = useSafeAreaInsets();
   const { userData } = useUser();
   const [modalVisible, setModalVisible] = useState(false);
-  const themeContext = useContext(ThemeContext);
-  if (!themeContext) {
-    throw new Error("ThemeContext must be used within a ThemeProvider");
-  }
+  const { theme } = useTheme();
 
-  const { theme } = themeContext;
   const dynamicStyles = getStyles(theme);
 
   function contactMe() {
@@ -41,13 +37,15 @@ export default function CustomDrawerContent(props: any) {
       console.error("Error opening linkedin", err)
     );
   }
-  
+
   return (
     <View style={[{ flex: 1 }, dynamicStyles.changeBackgroundColor]}>
       <DrawerContentScrollView {...props} scrollEnabled={false} st>
         <View style={{ paddingBottom: 20 }}>
           <Avatar size={100} url={userData?.profilePicture!} />
-          <Text style={[styles.name, dynamicStyles.changeTextColor]}>{userData?.name}</Text>
+          <Text style={[styles.name, dynamicStyles.changeTextColor]}>
+            {userData?.name}
+          </Text>
         </View>
 
         <DrawerItemList {...props} />
@@ -68,9 +66,7 @@ export default function CustomDrawerContent(props: any) {
 
       <View style={[styles.footer, { paddingBottom: 20 + bottom }]}>
         <TouchableOpacity onPress={contactMe}>
-          <Text style={{ color: "#1465bb" }}>
-            Contact me
-          </Text>
+          <Text style={{ color: "#1465bb" }}>Contact me</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setModalVisible(true)}>
           <Ionicons

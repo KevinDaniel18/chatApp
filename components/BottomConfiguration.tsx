@@ -7,13 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -23,8 +17,8 @@ import {
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { useUser } from "@/hooks/user/userContext";
 import { getStyles } from "@/constants/getStyles";
-import ThemeContext from "@/hooks/theme/ThemeContext.";
-import { useFocusEffect } from "expo-router";
+import { useTheme } from "@/hooks/theme/ThemeContext.";
+import { router } from "expo-router";
 
 export default function BottomConfiguration({
   modalVisible,
@@ -33,19 +27,12 @@ export default function BottomConfiguration({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ["24%", "50%", "90%"], []);
   const { userData, fetchUser } = useUser();
-  const themeContext = useContext(ThemeContext);
+  const { theme, toggleTheme } = useTheme();
 
-  if (!themeContext) {
-    throw new Error("ThemeContext must be used within a ThemeProvider");
-  }
-
-  const { theme, toggleTheme } = themeContext;
   const dynamicStyles = getStyles(theme);
-
   useEffect(() => {
     if (modalVisible) {
-      console.log("imagen:", userData?.profilePicture);
-      fetchUser()
+      fetchUser();
 
       bottomSheetModalRef.current?.present();
     } else {
@@ -80,6 +67,11 @@ export default function BottomConfiguration({
     []
   );
 
+  function navigateToUpdateUser() {
+    setModalVisible(false);
+    router.push("/user/update-user");
+  }
+
   return (
     <BottomSheetModal
       ref={bottomSheetModalRef}
@@ -103,7 +95,10 @@ export default function BottomConfiguration({
           <Text style={[styles.title, dynamicStyles.changeTextColor]}>
             Account
           </Text>
-          <TouchableOpacity style={styles.accountContainer}>
+          <TouchableOpacity
+            style={styles.accountContainer}
+            onPress={navigateToUpdateUser}
+          >
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 15 }}
             >
@@ -150,7 +145,7 @@ export default function BottomConfiguration({
 
                 <Text style={dynamicStyles.changeTextColor}>Notifications</Text>
               </View>
-              <Switch/>
+              <Switch />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.settingItem} onPress={toggleTheme}>

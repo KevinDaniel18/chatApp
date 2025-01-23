@@ -10,6 +10,8 @@ import {
 import React, { useState } from "react";
 import useAuthStore from "@/hooks/store/authStore";
 import { router } from "expo-router";
+import { useTheme } from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 interface LoginProps {
   login: (email: string, password: string) => Promise<any>;
@@ -20,6 +22,9 @@ export default function Login({ login, loginWithSupabase }: LoginProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const isLoading = useAuthStore((state) => state.isLoading);
+  const { theme } = useTheme();
+
+  const dynamicStyles = getStyles(theme);
 
   async function handleLogin() {
     if (!email || !password) {

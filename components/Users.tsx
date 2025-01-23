@@ -10,24 +10,25 @@ import {
   ViewStyle,
   ActivityIndicator,
 } from "react-native";
-import React, { useCallback, useContext, useEffect, useState } from "react";
-import { getAllUsers, getLikedUsers, likeUser } from "@/endpoints/endpoint";
+import React, { useCallback, useContext, useState } from "react";
+import {
+  getAllUsers,
+  getLikedUsers,
+  getUsersWithPendingMessages,
+  likeUser,
+} from "@/endpoints/endpoint";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { SearchContext } from "@/hooks/search/searchContext";
-import {
-  router,
-  useFocusEffect,
-  useGlobalSearchParams,
-  useLocalSearchParams,
-} from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useUser } from "@/hooks/user/userContext";
 import { useSocket } from "@/hooks/store/socketStore";
-import ThemeContext from "@/hooks/theme/ThemeContext.";
+import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
+import BottomSendMsg from "./BottomSendMsg";
 
-interface UsersProps {
+export interface UsersProps {
   id: number;
   name: string;
   profilePicture: string;
@@ -45,24 +46,15 @@ export default function Users() {
   const [data, setData] = useState<UsersProps[]>([]);
   const [loading, setLoading] = useState(false);
   const [likedUsers, setLikedUsers] = useState<{ [key: number]: boolean }>({});
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UsersProps | null>(null);
   const { userId } = useUser();
   const socket = useSocket();
   const { searchText } = useContext(SearchContext);
 
-  const themeContext = useContext(ThemeContext);
-  if (!themeContext) {
-    throw new Error("ThemeContext must be used within a ThemeProvider");
-  }
-
-  const { theme } = themeContext;
+  const { theme } = useTheme();
   const dynamicStyles = getStyles(theme);
 
-  function navigateToChat(receiverId: number, userName: string) {
-    router.push({
-      pathname: "/user/chat",
-      params: { receiverId, userName },
-    });
-  }
 
   useFocusEffect(
     useCallback(() => {
@@ -73,10 +65,8 @@ export default function Users() {
         try {
           const res = await getAllUsers();
           setData(res.data);
-          console.log("user id obtenido", userId!);
 
           const likedRes = await getLikedUsers(userId!);
-          console.log(likedRes.data);
 
           const likedUsersIds = likedRes.data;
 
@@ -98,6 +88,7 @@ export default function Users() {
       fetchUsers();
     }, [userId])
   );
+
 
   async function toggleLike(likedId: number) {
     try {
@@ -136,7 +127,7 @@ export default function Users() {
 
   const filteredUsers = data.filter(
     (user) =>
-      user.name.toLowerCase().includes(searchText.toLowerCase()) &&
+      user.name.toLowerCase().includes(searchText.toLowerCase().trim()) &&
       user.id !== userId
   );
 
@@ -154,6 +145,7 @@ export default function Users() {
             width: "70%",
             alignSelf: "center",
             margin: 16,
+            backgroundColor: theme === "dark" ? "black" : "white",
           }
         : {
             ...styles.item,
@@ -187,7 +179,12 @@ export default function Users() {
           {name}
         </Text>
         <View style={styles.icons}>
-          <TouchableOpacity onPress={() => navigateToChat(id, name)}>
+          <TouchableOpacity
+            onPress={() => {
+              setSelectedUser({ id, name, profilePicture, likes });
+              setModalVisible(true);
+            }}
+          >
             <Feather
               name="message-square"
               size={20}
@@ -210,7 +207,7 @@ export default function Users() {
                 }
               />
             </TouchableOpacity>
-            <Text>{likes}</Text>
+            <Text style={dynamicStyles.changeTextColor}>{likes}</Text>
           </View>
         </View>
       </View>
@@ -251,6 +248,11 @@ export default function Users() {
           columnWrapperStyle={filteredUsers.length === 1 ? null : styles.row}
         />
       )}
+      <BottomSendMsg
+        modalVisible={modalVisible || false}
+        setModalVisible={() => setModalVisible(false)}
+        selectedUser={selectedUser}
+      />
     </SafeAreaView>
   );
 }
