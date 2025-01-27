@@ -6,6 +6,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import { useSocket } from "@/hooks/store/socketStore";
@@ -20,10 +23,20 @@ import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import ChatOptionModal from "./ChatOptionModal";
+import MessageImage from "./MessageImage";
+import { supabase } from "@/endpoints/supabase";
+import { showToast } from "@/constants/toast";
+import { useVideoPlayer, VideoView } from "expo-video";
+import MessageList from "./MessageList";
+import VideoItem from "./VideoItem";
 
 export default function Chat({ receiverId, userName }: any) {
   const [sendMessage, setSendMessage] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
+  const [files, setFiles] = useState<any[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [isFileRendered, setIsFileRendered] = useState(false);
+  const [isDeletingFiles, setIsDeletingFiles] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
     null
   );
@@ -44,7 +57,7 @@ export default function Chat({ receiverId, userName }: any) {
           try {
             const msgData = await getMessages(userId!, Number(receiverId));
             //console.log(msgData.data);
-            
+
             console.log(msgData.data.length);
             const filteredMessages = msgData.data.filter(
               (message: any) => !message.deletedForUserIds.includes(userId!)
@@ -122,17 +135,19 @@ export default function Chat({ receiverId, userName }: any) {
   };
 
   async function handleSendMessage() {
-    if (socket && sendMessage.trim() !== "") {
+    if ((socket && sendMessage.trim() !== "") || files.length > 0) {
       const newMessage = {
         senderId: userId,
         receiverId: Number(receiverId),
         content: sendMessage.trim(),
+        files,
         createdAt: new Date().toISOString(),
       };
 
-      socket.emit("sendMessage", newMessage);
-      socket.emit("enterChat", { userId, receiverId });
+      socket!.emit("sendMessage", newMessage);
+      socket!.emit("enterChat", { userId, receiverId });
       setSendMessage("");
+      setFiles([]);
     }
   }
 
@@ -172,6 +187,77 @@ export default function Chat({ receiverId, userName }: any) {
 
   const groupedMessages = groupMessagesByDate(messages);
 
+  const handleFileLoad = (index: any) => {
+    // Marcar cuando todas las imágenes están completamente cargadas
+    if (files.length === index + 1) {
+      setIsFileRendered(true); // Solo marcar como renderizado cuando todas las imágenes hayan cargado
+    }
+  };
+
+  //esta deberia ser la funcion para borrar los archivos del bucket y limpiar el estado
+  async function deleteFiles() {
+    setIsDeletingFiles(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Debes estar autenticado para eliminar los archivos.");
+      }
+
+      if (files.length === 0) {
+        showToast("No hay archivos para eliminar.");
+        return;
+      }
+
+      // Prepara los archivos para ser eliminados del bucket
+      const paths = files.map((fileUrl) => fileUrl.split("/").pop());
+
+      const { error } = await supabase.storage.from("messageImg").remove(paths);
+
+      if (error) {
+        throw error;
+      }
+
+      // Limpia el estado de los archivos
+      setFiles([]);
+
+      showToast("Done.");
+    } catch (error) {
+      if (error instanceof Error) {
+        Alert.alert("Error canceling files:", error.message);
+      }
+    } finally {
+      setIsDeletingFiles(false);
+    }
+  }
+
+  const isImage = (fileUrl: string) => /\.(jpg|jpeg|png|gif)$/i.test(fileUrl);
+  const isVideo = (fileUrl: string) => /\.(mp4|mov|avi|mkv)$/i.test(fileUrl);
+
+  const renderedFiles = files.map((fileUrl, index) => {
+    if (isImage(fileUrl)) {
+      return (
+        <Image
+          key={`image-${index}`}
+          source={{ uri: fileUrl }}
+          width={40}
+          height={40}
+          onLoad={() => handleFileLoad(index)}
+        />
+      );
+    } else if (isVideo(fileUrl)) {
+      // Inicializar el reproductor de video
+      return (
+        <VideoItem
+          key={`video-${index}`}
+          fileUrl={fileUrl}
+          onLoad={handleFileLoad}
+          index={index}
+        />
+      );
+    }
+    return null;
+  });
+
   return (
     <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
       <View style={[styles.header, { marginTop: insets.top }]}>
@@ -187,64 +273,31 @@ export default function Chat({ receiverId, userName }: any) {
             {userName}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => setOpenModal(true)}>
-          <SimpleLineIcons
-            name="options-vertical"
-            size={24}
-            color={theme === "dark" ? "white" : "black"}
-          />
-        </TouchableOpacity>
+        {isDeletingFiles ? (
+          <ActivityIndicator size={"small"} />
+        ) : files.length > 0 && isFileRendered ? (
+          <TouchableOpacity onPress={deleteFiles}>
+            <Text style={{ color: "#ee391f", fontWeight: "bold" }}>Cancel</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={() => setOpenModal(true)}>
+            <SimpleLineIcons
+              name="options-vertical"
+              size={24}
+              color={theme === "dark" ? "white" : "black"}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
-      <View style={styles.content}>
-        <FlatList
-          data={Object.keys(groupedMessages)}
-          keyExtractor={(item) => item}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <View>
-              <Text style={styles.dateLabel}>{item}</Text>
-              {groupedMessages[item].map((message: any, index: number) => (
-                <View
-                  key={`${item}-${
-                    message.id || `${message.createdAt}-${index}`
-                  }`}
-                >
-                  <TouchableOpacity
-                    onPress={() => handleMessagePress(message.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.messageBubble,
-                        message.senderId === Number(userId)
-                          ? styles.sentMessage
-                          : styles.receivedMessage,
-                      ]}
-                    >
-                      <Text style={styles.messageText}>{message.content}</Text>
-                    </View>
-                  </TouchableOpacity>
-                  {selectedMessageId === message.id && (
-                    <Animated.View style={{ opacity: fadeAnim }}>
-                      <Text
-                        style={[
-                          styles.timestampText,
-                          message.senderId === userId
-                            ? styles.sentTimestamp
-                            : styles.receivedTimestamp,
-                        ]}
-                      >
-                        {formatMessageTime(message.createdAt)}
-                      </Text>
-                    </Animated.View>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
-        />
-      </View>
+      <MessageList
+        groupedMessages={groupedMessages}
+        userId={userId}
+        handleMessagePress={handleMessagePress}
+        selectedMessageId={selectedMessageId}
+        formatMessageTime={formatMessageTime}
+        fadeAnim={fadeAnim}
+      />
 
       <View
         style={[
@@ -256,28 +309,51 @@ export default function Chat({ receiverId, userName }: any) {
         <TextInput
           value={sendMessage}
           onChangeText={setSendMessage}
-          placeholder="Write a message..."
+          placeholder={
+            loadingFiles
+              ? "Loading files..."
+              : files.length > 0 && !isFileRendered
+              ? "Rendering files..."
+              : "Write a message..."
+          }
           placeholderTextColor={theme === "dark" ? "#6f6f6f" : "#000"}
           style={[styles.input, { color: theme === "dark" ? "#fff" : "#000" }]}
+          editable={!loadingFiles}
         />
-        <TouchableOpacity
-          onPress={handleSendMessage}
-          disabled={!sendMessage.trim()}
-        >
-          <AntDesign
-            name="arrowup"
-            size={24}
-            color={
-              theme === "dark"
-                ? sendMessage.trim()
-                  ? "white"
-                  : "gray"
-                : sendMessage.trim()
-                ? "black"
-                : "gray"
+        <View style={{ flexDirection: "row", gap: 15, alignItems: "center" }}>
+          {loadingFiles ? (
+            <ActivityIndicator size="small" />
+          ) : files.length > 0 ? (
+            <>{renderedFiles}</>
+          ) : (
+            <MessageImage
+              setFiles={setFiles}
+              setLoadingFiles={setLoadingFiles}
+            />
+          )}
+
+          <TouchableOpacity
+            onPress={handleSendMessage}
+            disabled={
+              loadingFiles ||
+              (!sendMessage.trim() && (!isFileRendered || files.length === 0))
             }
-          />
-        </TouchableOpacity>
+          >
+            <AntDesign
+              name="arrowup"
+              size={24}
+              color={
+                theme === "dark"
+                  ? sendMessage.trim() || (files.length > 0 && isFileRendered)
+                    ? "white"
+                    : "gray"
+                  : sendMessage.trim() || (files.length > 0 && isFileRendered)
+                  ? "black"
+                  : "gray"
+              }
+            />
+          </TouchableOpacity>
+        </View>
       </View>
       <ChatOptionModal
         visible={openModal}
@@ -364,5 +440,11 @@ const styles = StyleSheet.create({
   receivedTimestamp: {
     textAlign: "left",
     marginLeft: 16,
+  },
+  messageImage: {
+    width: 150,
+    height: 150,
+    borderRadius: 8,
+    marginTop: 8,
   },
 });

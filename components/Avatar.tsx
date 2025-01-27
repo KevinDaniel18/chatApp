@@ -34,6 +34,7 @@ export default function Avatar({ url, size = 150 }: Props) {
 
   useEffect(() => {
     if (url) {
+      
       downloadImage(url);
     } else {
       setLoading(false);

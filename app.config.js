@@ -45,6 +45,13 @@ module.exports = {
             "The app accesses your photos to let you share them with your friends.",
         },
       ],
+      [
+        "expo-video",
+        {
+          supportsBackgroundPlayback: true,
+          supportsPictureInPicture: true,
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

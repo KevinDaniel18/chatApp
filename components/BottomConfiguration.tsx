@@ -25,7 +25,7 @@ export default function BottomConfiguration({
   setModalVisible,
 }: any) {
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => ["24%", "50%", "90%"], []);
+  const snapPoints = useMemo(() => ["24%", "50%"], []);
   const { userData, fetchUser } = useUser();
   const { theme, toggleTheme } = useTheme();
 
@@ -84,84 +84,79 @@ export default function BottomConfiguration({
       }}
       backgroundStyle={dynamicStyles.changeBackgroundColor}
     >
-      <BottomSheetView
+      <BottomSheetScrollView
         style={[styles.container, dynamicStyles.changeBackgroundColor]}
+        contentContainerStyle={{paddingBottom: 20}}
       >
-        <BottomSheetScrollView>
-          <Text style={[styles.header, dynamicStyles.changeTextColor]}>
-            Settings
-          </Text>
+        <Text style={[styles.header, dynamicStyles.changeTextColor]}>
+          Settings
+        </Text>
 
-          <Text style={[styles.title, dynamicStyles.changeTextColor]}>
-            Account
-          </Text>
-          <TouchableOpacity
-            style={styles.accountContainer}
-            onPress={navigateToUpdateUser}
-          >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 15 }}
-            >
-              <Image
-                source={
-                  userData?.profilePicture
-                    ? { uri: userData?.profilePicture }
-                    : require("@/assets/images/defaultProfile.jpg")
-                }
-                style={styles.image}
-              />
-              <View style={{ gap: 4 }}>
-                <Text
-                  style={[{ fontWeight: "700" }, dynamicStyles.changeTextColor]}
-                >
-                  {userData?.name}
-                </Text>
-                <Text
-                  style={[{ color: "gray" }, dynamicStyles.changeTextColor]}
-                >
-                  Personal Info
-                </Text>
-              </View>
-            </View>
-            <AntDesign
-              name="right"
-              size={24}
-              color={theme === "dark" ? "#fff" : "#000"}
+        <Text style={[styles.title, dynamicStyles.changeTextColor]}>
+          Account
+        </Text>
+        <TouchableOpacity
+          style={styles.accountContainer}
+          onPress={navigateToUpdateUser}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 15 }}>
+            <Image
+              source={
+                userData?.profilePicture
+                  ? { uri: userData?.profilePicture }
+                  : require("@/assets/images/defaultProfile.jpg")
+              }
+              style={styles.image}
             />
+            <View style={{ gap: 4 }}>
+              <Text
+                style={[{ fontWeight: "700" }, dynamicStyles.changeTextColor]}
+              >
+                {userData?.name}
+              </Text>
+              <Text style={[{ color: "gray" }, dynamicStyles.changeTextColor]}>
+                Personal Info
+              </Text>
+            </View>
+          </View>
+          <AntDesign
+            name="right"
+            size={24}
+            color={theme === "dark" ? "#fff" : "#000"}
+          />
+        </TouchableOpacity>
+
+        <Text style={[styles.title, dynamicStyles.changeTextColor]}>
+          Setting
+        </Text>
+
+        <View style={{ gap: 20 }}>
+          <TouchableOpacity style={styles.settingItem}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 20 }}
+            >
+              <View style={[styles.icon, { backgroundColor: "#E8F5E9" }]}>
+                <Ionicons name="notifications" size={24} color="#009929" />
+              </View>
+
+              <Text style={dynamicStyles.changeTextColor}>Notifications</Text>
+            </View>
+            <Switch />
           </TouchableOpacity>
 
-          <Text style={[styles.title, dynamicStyles.changeTextColor]}>
-            Setting
-          </Text>
-
-          <View style={{ gap: 20 }}>
-            <TouchableOpacity style={styles.settingItem}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 20 }}
-              >
-                <View style={[styles.icon, { backgroundColor: "#E8F5E9" }]}>
-                  <Ionicons name="notifications" size={24} color="#009929" />
-                </View>
-
-                <Text style={dynamicStyles.changeTextColor}>Notifications</Text>
+          <TouchableOpacity style={styles.settingItem} onPress={toggleTheme}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 20 }}
+            >
+              <View style={[styles.icon, { backgroundColor: "#81c9fa" }]}>
+                <Ionicons name="moon" size={24} color="#1465bb" />
               </View>
-              <Switch />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.settingItem} onPress={toggleTheme}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 20 }}
-              >
-                <View style={[styles.icon, { backgroundColor: "#81c9fa" }]}>
-                  <Ionicons name="moon" size={24} color="#1465bb" />
-                </View>
-                <Text style={dynamicStyles.changeTextColor}>Dark Mode</Text>
-              </View>
-              <Switch value={theme === "dark"} onValueChange={toggleTheme} />
-            </TouchableOpacity>
-          </View>
-        </BottomSheetScrollView>
-      </BottomSheetView>
+              <Text style={dynamicStyles.changeTextColor}>Dark Mode</Text>
+            </View>
+            <Switch value={theme === "dark"} onValueChange={toggleTheme} />
+          </TouchableOpacity>
+        </View>
+      </BottomSheetScrollView>
     </BottomSheetModal>
   );
 }

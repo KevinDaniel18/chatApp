@@ -40,7 +40,7 @@ export default function CustomDrawerContent(props: any) {
 
   return (
     <View style={[{ flex: 1 }, dynamicStyles.changeBackgroundColor]}>
-      <DrawerContentScrollView {...props} scrollEnabled={false} st>
+      <DrawerContentScrollView {...props}>
         <View style={{ paddingBottom: 20 }}>
           <Avatar size={100} url={userData?.profilePicture!} />
           <Text style={[styles.name, dynamicStyles.changeTextColor]}>
