@@ -1,5 +1,4 @@
 import {
-  FlatList,
   Animated,
   StyleSheet,
   Text,
@@ -9,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import { useSocket } from "@/hooks/store/socketStore";
@@ -26,9 +26,12 @@ import ChatOptionModal from "./ChatOptionModal";
 import MessageImage from "./MessageImage";
 import { supabase } from "@/endpoints/supabase";
 import { showToast } from "@/constants/toast";
-import { useVideoPlayer, VideoView } from "expo-video";
 import MessageList from "./MessageList";
 import VideoItem from "./VideoItem";
+import ProgressBar from "./ProgressBar";
+import useFileStore from "@/hooks/store/fileStore";
+import * as SecureStore from "expo-secure-store";
+import { groupMessagesByDate } from "./groupMessagesByDate";
 
 export default function Chat({ receiverId, userName }: any) {
   const [sendMessage, setSendMessage] = useState("");
@@ -37,6 +40,7 @@ export default function Chat({ receiverId, userName }: any) {
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [isFileRendered, setIsFileRendered] = useState(false);
   const [isDeletingFiles, setIsDeletingFiles] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
     null
   );
@@ -47,7 +51,7 @@ export default function Chat({ receiverId, userName }: any) {
   const [fadeAnim] = useState(new Animated.Value(0));
 
   const { theme } = useTheme();
-
+  const { getFilesForUser, setFilesForUser } = useFileStore();
   const dynamicStyles = getStyles(theme);
 
   useFocusEffect(
@@ -151,50 +155,14 @@ export default function Chat({ receiverId, userName }: any) {
     }
   }
 
-  const groupMessagesByDate = (messages: any[]) => {
-    const groupedMessages: any = {};
-
-    messages.forEach((message) => {
-      if (!message.createdAt) return;
-
-      const messageDate = parseISO(message.createdAt);
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      const messageDateOnly = new Date(messageDate.setHours(0, 0, 0, 0));
-      const todayOnly = new Date(today.setHours(0, 0, 0, 0));
-      const yesterdayOnly = new Date(yesterday.setHours(0, 0, 0, 0));
-
-      let groupLabel = "";
-
-      if (messageDateOnly.getTime() === todayOnly.getTime()) {
-        groupLabel = "Today";
-      } else if (messageDateOnly.getTime() === yesterdayOnly.getTime()) {
-        groupLabel = "Yesterday";
-      } else {
-        groupLabel = format(messageDate, "d 'of' MMMM yyyy", { locale: enUS });
-      }
-
-      if (!groupedMessages[groupLabel]) {
-        groupedMessages[groupLabel] = [];
-      }
-      groupedMessages[groupLabel].push(message);
-    });
-
-    return groupedMessages;
-  };
-
   const groupedMessages = groupMessagesByDate(messages);
 
   const handleFileLoad = (index: any) => {
-    // Marcar cuando todas las imágenes están completamente cargadas
     if (files.length === index + 1) {
-      setIsFileRendered(true); // Solo marcar como renderizado cuando todas las imágenes hayan cargado
+      setIsFileRendered(true);
     }
   };
 
-  //esta deberia ser la funcion para borrar los archivos del bucket y limpiar el estado
   async function deleteFiles() {
     setIsDeletingFiles(true);
     try {
@@ -218,8 +186,11 @@ export default function Chat({ receiverId, userName }: any) {
       }
 
       // Limpia el estado de los archivos
-      setFiles([]);
+      await SecureStore.deleteItemAsync(`chat-files-${receiverId}`);
+      const deletedFiles = await SecureStore.getItemAsync("chat-files");
 
+      setFilesForUser(receiverId, []);
+      setFiles([]);
       showToast("Done.");
     } catch (error) {
       if (error instanceof Error) {
@@ -230,33 +201,126 @@ export default function Chat({ receiverId, userName }: any) {
     }
   }
 
+  const deleteFile = async (indexToDelete: number) => {
+    setIsDeletingFiles(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Debes estar autenticado para eliminar los archivos.");
+      }
+
+      if (files.length === 0) {
+        showToast("No hay archivos para eliminar.");
+        return;
+      }
+
+      const fileUrl = files[indexToDelete];
+      const path = fileUrl.split("/").pop();
+
+      const { error } = await supabase.storage
+        .from("messageImg")
+        .remove([path]);
+
+      if (error) {
+        throw error;
+      }
+
+      const newFiles = files.filter((_, index) => index !== indexToDelete);
+      setFiles(newFiles);
+      setFilesForUser(receiverId, newFiles);
+      
+      await SecureStore.setItemAsync(
+        `chat-files-${receiverId}`, 
+        JSON.stringify(newFiles)
+      );
+
+
+      if (newFiles.length === 0) {
+        setIsFileRendered(false);
+      }
+
+      showToast("File deleted.");
+    } catch (error) {
+      if (error instanceof Error) {
+        Alert.alert("Error al eliminar el archivo:", error.message);
+      }
+    } finally {
+      setIsDeletingFiles(false);
+    }
+  };
+
   const isImage = (fileUrl: string) => /\.(jpg|jpeg|png|gif)$/i.test(fileUrl);
   const isVideo = (fileUrl: string) => /\.(mp4|mov|avi|mkv)$/i.test(fileUrl);
 
   const renderedFiles = files.map((fileUrl, index) => {
     if (isImage(fileUrl)) {
       return (
-        <Image
-          key={`image-${index}`}
-          source={{ uri: fileUrl }}
-          width={40}
-          height={40}
-          onLoad={() => handleFileLoad(index)}
-        />
+        <View key={`image-${index}`} style={{ flexDirection: "row", gap: 4 }}>
+          <Image
+            source={{ uri: fileUrl }}
+            width={50}
+            height={50}
+            style={{ borderRadius: 10 }}
+            onLoad={() => handleFileLoad(index)}
+          />
+          <TouchableOpacity onPress={() => deleteFile(index)}>
+            <AntDesign name="close" size={20} color="black" />
+          </TouchableOpacity>
+        </View>
       );
     } else if (isVideo(fileUrl)) {
-      // Inicializar el reproductor de video
       return (
         <VideoItem
           key={`video-${index}`}
           fileUrl={fileUrl}
           onLoad={handleFileLoad}
           index={index}
+          deleteFile={() => deleteFile(index)}
         />
       );
     }
     return null;
   });
+
+  useEffect(() => {
+    async function loadFiles() {
+      const storedFiles = await SecureStore.getItemAsync(
+        `chat-files-${receiverId}`
+      );
+      if (storedFiles) {
+        const parsedFiles = JSON.parse(storedFiles);
+        setFiles(parsedFiles);
+        setFilesForUser(receiverId, parsedFiles);
+      }
+    }
+    loadFiles();
+  }, [receiverId]);
+
+  useEffect(() => {
+    async function saveFiles() {
+      if (files.length > 0) {
+        await SecureStore.setItemAsync(
+          `chat-files-${receiverId}`,
+          JSON.stringify(files)
+        );
+        setFilesForUser(receiverId, files);
+      }
+    }
+    saveFiles();
+  }, [files, receiverId]);
+
+  useEffect(() => {
+    const currentUserFiles = getFilesForUser(receiverId);
+    if (currentUserFiles.length > 0) {
+      setFiles(currentUserFiles);
+    }
+  }, [receiverId]);
+
+  useEffect(() => {
+    if (files.length > 0 && files.length === renderedFiles.length) {
+      setIsFileRendered(true);
+    }
+  }, [files]);
 
   return (
     <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
@@ -298,61 +362,99 @@ export default function Chat({ receiverId, userName }: any) {
         formatMessageTime={formatMessageTime}
         fadeAnim={fadeAnim}
       />
-
-      <View
-        style={[
-          styles.chatInputContainer,
-          dynamicStyles.changeBackgroundColor,
-          { marginBottom: insets.bottom },
-        ]}
-      >
-        <TextInput
-          value={sendMessage}
-          onChangeText={setSendMessage}
-          placeholder={
-            loadingFiles
-              ? "Loading files..."
-              : files.length > 0 && !isFileRendered
-              ? "Rendering files..."
-              : "Write a message..."
-          }
-          placeholderTextColor={theme === "dark" ? "#6f6f6f" : "#000"}
-          style={[styles.input, { color: theme === "dark" ? "#fff" : "#000" }]}
-          editable={!loadingFiles}
-        />
-        <View style={{ flexDirection: "row", gap: 15, alignItems: "center" }}>
-          {loadingFiles ? (
-            <ActivityIndicator size="small" />
-          ) : files.length > 0 ? (
-            <>{renderedFiles}</>
-          ) : (
-            <MessageImage
-              setFiles={setFiles}
-              setLoadingFiles={setLoadingFiles}
-            />
-          )}
-
-          <TouchableOpacity
-            onPress={handleSendMessage}
-            disabled={
-              loadingFiles ||
-              (!sendMessage.trim() && (!isFileRendered || files.length === 0))
-            }
+      <View>
+        {loadingFiles && (
+          <ProgressBar
+            progress={uploadProgress}
+            height={8}
+            backgroundColor="#f3f3f3"
+            progressColor="#4caf50"
+          />
+        )}
+        {files.length > 0 && (
+          <ScrollView
+            style={styles.renderedFiles}
+            horizontal
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "center",
+            }}
           >
-            <AntDesign
-              name="arrowup"
-              size={24}
-              color={
-                theme === "dark"
-                  ? sendMessage.trim() || (files.length > 0 && isFileRendered)
-                    ? "white"
-                    : "gray"
-                  : sendMessage.trim() || (files.length > 0 && isFileRendered)
-                  ? "black"
-                  : "gray"
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 15,
+                justifyContent: "center",
+              }}
+            >
+              {renderedFiles}
+            </View>
+          </ScrollView>
+        )}
+        <View
+          style={[
+            styles.chatInputContainer,
+            dynamicStyles.changeBackgroundColor,
+            { marginBottom: insets.bottom },
+          ]}
+        >
+          <TextInput
+            value={sendMessage}
+            onChangeText={setSendMessage}
+            placeholder={
+              loadingFiles
+                ? "Loading files..."
+                : files.length > 0 && !isFileRendered
+                ? "Rendering files..."
+                : "Write a message..."
+            }
+            placeholderTextColor={theme === "dark" ? "#6f6f6f" : "#000"}
+            style={[
+              styles.input,
+              { color: theme === "dark" ? "#fff" : "#000" },
+            ]}
+            editable={!loadingFiles || !isFileRendered}
+          />
+          <View style={{ flexDirection: "row", gap: 15, alignItems: "center" }}>
+            {loadingFiles ? (
+              <Text style={{ color: theme === "dark" ? "white" : "black" }}>
+                {uploadProgress.toFixed(0)}%
+              </Text>
+            ) : files.length > 0 && !isFileRendered ? (
+              <ActivityIndicator
+                size="small"
+                color={theme === "dark" ? "white" : "black"}
+              />
+            ) : (
+              <MessageImage
+                setFiles={setFiles}
+                setLoadingFiles={setLoadingFiles}
+                setUploadProgress={setUploadProgress}
+              />
+            )}
+
+            <TouchableOpacity
+              onPress={handleSendMessage}
+              disabled={
+                loadingFiles ||
+                (!sendMessage.trim() && (!isFileRendered || files.length === 0))
               }
-            />
-          </TouchableOpacity>
+            >
+              <AntDesign
+                name="arrowup"
+                size={24}
+                color={
+                  theme === "dark"
+                    ? sendMessage.trim() || (files.length > 0 && isFileRendered)
+                      ? "white"
+                      : "gray"
+                    : sendMessage.trim() || (files.length > 0 && isFileRendered)
+                    ? "black"
+                    : "gray"
+                }
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
       <ChatOptionModal
@@ -446,5 +548,20 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: 8,
     marginTop: 8,
+  },
+  renderedFiles: {
+    width: "100%",
+    padding: 20,
+    backgroundColor: "white",
+    borderTopRightRadius: 10,
+    borderTopLeftRadius: 10,
+    shadowColor: "#000",
+    shadowOpacity: 10,
+    shadowRadius: 5,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    elevation: 5,
   },
 });

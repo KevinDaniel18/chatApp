@@ -11,7 +11,7 @@ const RenderVideo = ({
   index: number;
 }) => {
   const player = useVideoPlayer(file, (player) => {
-    player.loop = true;
+    player.loop = false;
   });
 
   return (

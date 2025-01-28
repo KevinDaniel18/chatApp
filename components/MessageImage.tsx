@@ -3,13 +3,14 @@ import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import { supabase } from "@/endpoints/supabase";
 import { FontAwesome } from "@expo/vector-icons";
-import { useSocket } from "@/hooks/store/socketStore";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
-import { getStyles } from "@/constants/getStyles";
 
-export default function MessageImage({ setFiles, setLoadingFiles }: any) {
+export default function MessageImage({
+  setFiles,
+  setLoadingFiles,
+  setUploadProgress,
+}: any) {
   const { theme } = useTheme();
-
 
   async function uploadFile() {
     try {
@@ -19,7 +20,7 @@ export default function MessageImage({ setFiles, setLoadingFiles }: any) {
       }
 
       setLoadingFiles(true);
-
+      setUploadProgress(0);
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images", "videos"],
         allowsMultipleSelection: true,
@@ -45,6 +46,12 @@ export default function MessageImage({ setFiles, setLoadingFiles }: any) {
               throw new Error("No se pudo determinar la extensión del archivo");
 
             const path = `${Date.now()}.${fileExt}`;
+
+            for (let progress = 0; progress <= 100; progress += 10) {
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              setUploadProgress(progress);
+            }
+
             const { data, error: uploadError } = await supabase.storage
               .from("messageImg")
               .upload(path, arrayBuffer, {
@@ -61,7 +68,7 @@ export default function MessageImage({ setFiles, setLoadingFiles }: any) {
               throw new Error("No se pudo obtener la URL pública");
 
             console.log("Archivo subido:", publicUrl);
-            return publicUrl; // Retorna la URL pública
+            return publicUrl;
           } catch (error) {
             console.error("Error al subir archivo:", error);
             throw error;
@@ -69,21 +76,23 @@ export default function MessageImage({ setFiles, setLoadingFiles }: any) {
         })
       );
 
-      // Envía los archivos una vez que todos hayan sido subidos
       console.log("archivos:", fileUrls);
-      setFiles(fileUrls);
+      setFiles((prevFiles: string[]) => [...prevFiles, ...fileUrls]);
     } catch (error) {
       console.error("error", error);
     } finally {
       setLoadingFiles(false);
+      setUploadProgress(0);
     }
   }
 
   return (
     <TouchableOpacity onPress={uploadFile}>
-      <FontAwesome name="image" size={24}  color={theme === "dark" ? "white" : "black"} />
+      <FontAwesome
+        name="image"
+        size={24}
+        color={theme === "dark" ? "white" : "black"}
+      />
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({});

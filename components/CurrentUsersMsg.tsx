@@ -10,12 +10,11 @@ import {
 } from "react-native";
 import { getUsersSentMessages } from "@/endpoints/endpoint";
 import { useUser } from "@/hooks/user/userContext";
-import { router, useFocusEffect, useNavigation } from "expo-router";
-import { AntDesign } from "@expo/vector-icons";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { DrawerActions } from "@react-navigation/native";
+import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
+import useFileStore from "@/hooks/store/fileStore";
+import * as SecureStore from "expo-secure-store";
 
 interface User {
   id: number;
@@ -29,6 +28,7 @@ interface User {
 export default function CurrentUsersMsg() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const { getFilesForUser, setFilesForUser } = useFileStore();
   const { userId } = useUser();
 
   const { theme } = useTheme();
@@ -46,6 +46,7 @@ export default function CurrentUsersMsg() {
     useCallback(() => {
       async function fetchCurrentUsersMsg() {
         setLoading(true);
+
         try {
           const res = await getUsersSentMessages(userId!);
           setUsers(res.data);
@@ -59,33 +60,64 @@ export default function CurrentUsersMsg() {
     }, [userId])
   );
 
-  const renderItem = ({ item }: { item: User }) => (
-    <TouchableOpacity
-      style={[styles.itemContainer, dynamicStyles.changeBackgroundColor]}
-      onPress={() => navigateToChat(item.id, item.name)}
-    >
-      <Image
-        source={
-          item.profilePicture
-            ? { uri: item.profilePicture }
-            : require("@/assets/images/defaultProfile.jpg")
+  useEffect(() => {
+    async function loadFiles() {
+      for (const user of users) {
+        const storedFiles = await SecureStore.getItemAsync(
+          `chat-files-${user.id}`
+        );
+        if (storedFiles) {
+          const parsedFiles = JSON.parse(storedFiles);
+          setFilesForUser(user.id.toString(), parsedFiles);
         }
-        style={styles.avatar}
-      />
-      <View style={styles.userInfo}>
-        <Text style={[styles.name, dynamicStyles.changeTextColor]}>
-          {item.name}
-        </Text>
-        <Text style={styles.email}>{item.email}</Text>
-      </View>
-      <View style={styles.stats}>
-        <Text style={styles.likes}>{item.likes} likes</Text>
-        <Text style={styles.date}>
-          {new Date(item.createdAt).toLocaleDateString()}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+      }
+    }
+  
+    if (users.length > 0) {
+      loadFiles();
+    }
+  }, [users, setFilesForUser]);
+  
+
+  const renderItem = ({ item }: { item: User }) => {
+    const pendingFiles = getFilesForUser(item.id.toString());
+    
+    const hasFilesPending = pendingFiles.length > 0;
+    return (
+      <TouchableOpacity
+        style={[styles.itemContainer, dynamicStyles.changeBackgroundColor]}
+        onPress={() => navigateToChat(item.id, item.name)}
+      >
+        <Image
+          source={
+            item.profilePicture
+              ? { uri: item.profilePicture }
+              : require("@/assets/images/defaultProfile.jpg")
+          }
+          style={styles.avatar}
+        />
+        <View style={styles.userInfo}>
+          <Text style={[styles.name, dynamicStyles.changeTextColor]}>
+            {item.name}
+          </Text>
+          <Text style={styles.email}>{item.email}</Text>
+          {hasFilesPending && (
+            <Text style={{ color: "#40b034", fontWeight: "700" }}>
+              {pendingFiles.length === 1
+                ? `${pendingFiles.length} file pending to send`
+                : `${pendingFiles.length} pending files to send`}
+            </Text>
+          )}
+        </View>
+        <View style={styles.stats}>
+          <Text style={styles.likes}>{item.likes} likes</Text>
+          <Text style={styles.date}>
+            {new Date(item.createdAt).toLocaleDateString()}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>

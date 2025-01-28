@@ -15,6 +15,7 @@ import { AntDesign, Feather, Ionicons } from "@expo/vector-icons";
 import { deleteMessageForUser } from "@/endpoints/endpoint";
 import { Alert } from "react-native";
 import { showToast } from "@/constants/toast";
+import * as SecureStore from "expo-secure-store";
 
 export default function ChatOptionModal({
   visible,
@@ -55,10 +56,12 @@ export default function ChatOptionModal({
               if (res.status === 201) {
                 setLocalMessages([]);
                 setIsDeleted(true);
-                showToast("Messages deleted successfully")
+                await SecureStore.deleteItemAsync("chat-files");
+
+                showToast("Messages deleted successfully");
               }
               console.log("isdeleted despues de borrar", isDeleted);
-              return res
+              return res;
             } catch (error) {
               console.error(error);
             }
@@ -71,7 +74,7 @@ export default function ChatOptionModal({
   useEffect(() => {
     if (visible) {
       setLocalMessages(messages || []);
-      //console.log(messages);
+      console.log(JSON.stringify(messages));
 
       setShowModal(true);
       Animated.timing(slideAnim, {
