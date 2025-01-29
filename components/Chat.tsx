@@ -151,7 +151,9 @@ export default function Chat({ receiverId, userName }: any) {
       socket!.emit("sendMessage", newMessage);
       socket!.emit("enterChat", { userId, receiverId });
       setSendMessage("");
+      setFilesForUser(receiverId, []);
       setFiles([]);
+      await SecureStore.deleteItemAsync(`chat-files-${receiverId}`);
     }
   }
 
@@ -187,7 +189,6 @@ export default function Chat({ receiverId, userName }: any) {
 
       // Limpia el estado de los archivos
       await SecureStore.deleteItemAsync(`chat-files-${receiverId}`);
-      const deletedFiles = await SecureStore.getItemAsync("chat-files");
 
       setFilesForUser(receiverId, []);
       setFiles([]);
@@ -264,7 +265,7 @@ export default function Chat({ receiverId, userName }: any) {
             onLoad={() => handleFileLoad(index)}
           />
           <TouchableOpacity onPress={() => deleteFile(index)}>
-            <AntDesign name="close" size={20} color="black" />
+            <AntDesign name="close" size={20} color={theme === "dark" ? "#fff" : "#000"} />
           </TouchableOpacity>
         </View>
       );
@@ -316,11 +317,6 @@ export default function Chat({ receiverId, userName }: any) {
     }
   }, [receiverId]);
 
-  useEffect(() => {
-    if (files.length > 0 && files.length === renderedFiles.length) {
-      setIsFileRendered(true);
-    }
-  }, [files]);
 
   return (
     <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
@@ -373,7 +369,7 @@ export default function Chat({ receiverId, userName }: any) {
         )}
         {files.length > 0 && (
           <ScrollView
-            style={styles.renderedFiles}
+            style={[styles.renderedFiles, dynamicStyles.changeBackgroundColor]}
             horizontal
             contentContainerStyle={{
               flexGrow: 1,
@@ -385,6 +381,7 @@ export default function Chat({ receiverId, userName }: any) {
                 flexDirection: "row",
                 gap: 15,
                 justifyContent: "center",
+                
               }}
             >
               {renderedFiles}
@@ -552,7 +549,6 @@ const styles = StyleSheet.create({
   renderedFiles: {
     width: "100%",
     padding: 20,
-    backgroundColor: "white",
     borderTopRightRadius: 10,
     borderTopLeftRadius: 10,
     shadowColor: "#000",

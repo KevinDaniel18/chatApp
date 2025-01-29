@@ -1,5 +1,5 @@
 import useAuthStore from "@/hooks/store/authStore";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, StatusBar, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -12,19 +12,37 @@ export default function RootLayout() {
   const setRootReady = useAuthStore((state) => state.setRootReady);
   const initialize = useAuthStore((state) => state.initialize);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const isFirstTime = useAuthStore((state) => state.isFirstTime);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const error = useAuthStore((state) => state.error);
 
   useEffect(() => {
     initialize();
     setRootReady(true);
   }, []);
 
+  useEffect(() => {
+    if (!isLoading && !error) {
+      if (isAuthenticated) {
+        router.replace("/(drawer)");
+      } else if (isFirstTime) {
+        router.replace("/greeting");
+      } else {
+        router.replace("/sign-in");
+      }
+    }
+  }, [isLoading, isAuthenticated, isFirstTime, error]);
+
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View
+        style={[{ flex: 1, justifyContent: "center", alignItems: "center" }]}
+      >
         <ActivityIndicator size="large" />
       </View>
     );
   }
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>
@@ -36,6 +54,13 @@ export default function RootLayout() {
                 <Stack.Screen
                   name="(drawer)"
                   options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="greeting"
+                  options={{
+                    headerShown: false,
+                    animation: "fade",
+                  }}
                 />
                 <Stack.Screen
                   name="user/chat"

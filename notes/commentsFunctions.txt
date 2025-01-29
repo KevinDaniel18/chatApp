@@ -1,0 +1,7 @@
+--Chat.txt--
+
+  // useEffect(() => {
+  //   if (files.length > 0 && files.length === renderedFiles.length) {
+  //     setIsFileRendered(true);
+  //   }
+  // }, [files]);

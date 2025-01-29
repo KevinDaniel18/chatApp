@@ -11,7 +11,10 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  isFirstTime: boolean;
+  error: null;
+  setIsFirstTime: (value: boolean) => void;
+  register: (name: string, email: string, password: string) => Promise<any>;
   login: (email: string, password: string) => Promise<any>;
   loginWithSupabase: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
@@ -24,23 +27,32 @@ const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
   isAuthenticated: false,
   rootReady: false,
+  isFirstTime: false,
+  error: null,
   setRootReady: (ready: boolean) => set({ rootReady: ready }),
+  setIsFirstTime: async (isFirst: boolean) => {
+    await SecureStore.setItemAsync("HAS_LAUNCHED", "true");
+    set({ isFirstTime: isFirst });
+  },
 
   // Initialize the auth state from SecureStore
   initialize: async () => {
     try {
-      const token = await SecureStore.getItemAsync("token");
-      const supabaseAccessToken = await SecureStore.getItemAsync(
-        "ACCESS_TOKEN"
-      );
-      const supabaseRefreshToken = await SecureStore.getItemAsync(
-        "REFRESH_TOKEN"
-      );
+      const [token, hasLaunched, supabaseAccessToken, supabaseRefreshToken] =
+        await Promise.all([
+          SecureStore.getItemAsync("token"),
+          SecureStore.getItemAsync("HAS_LAUNCHED"),
+          SecureStore.getItemAsync("ACCESS_TOKEN"),
+          SecureStore.getItemAsync("REFRESH_TOKEN"),
+        ]);
+
+      const isFirstTime = !hasLaunched;
       if (token) {
         set({
           token,
           isAuthenticated: true,
           isLoading: false,
+          isFirstTime,
         });
 
         await supabase.auth.setSession({
@@ -48,7 +60,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
           refresh_token: supabaseRefreshToken!,
         });
       } else {
-        set({ isLoading: false });
+        set({ isLoading: false, isFirstTime });
       }
     } catch (error) {
       console.error("Failed to initialize auth store:", error);
@@ -58,7 +70,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
   register: async (name: string, email: string, password: string) => {
     try {
-      set({ isLoading: true });
+      set({ error: null });
       await authRegister(name, email, password);
 
       const { error } = await supabase.auth.signUp({
@@ -84,9 +96,18 @@ const useAuthStore = create<AuthState>((set, get) => ({
       await waitForRoot();
 
       router.replace("/sign-in");
-    } catch (error) {
-      console.error("Register failed:", error);
-      set({ isLoading: false });
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        isAuthenticated: false,
+        error: error.response?.data?.message || "Register failed",
+      });
+      if (error instanceof AxiosError && error.response) {
+        return {
+          error: true,
+          msg: error.response.data.message,
+        };
+      }
       throw error;
     }
   },
@@ -94,7 +115,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
   // Login function
   login: async (email: string, password: string) => {
     try {
-      set({ isLoading: true });
+      set({ isLoading: true, error: null });
 
       const response = await authLogin(email, password);
 
@@ -104,10 +125,13 @@ const useAuthStore = create<AuthState>((set, get) => ({
       // Store authentication data
       await SecureStore.setItemAsync("token", JSON.stringify(data.token));
       await SecureStore.setItemAsync("USER_ID", JSON.stringify(data.id));
+      await SecureStore.setItemAsync(
+        "USER_NAME",
+        JSON.stringify(data.userName)
+      );
 
       set({
         token: data.token,
-
         isAuthenticated: true,
         isLoading: false,
       });
@@ -123,16 +147,20 @@ const useAuthStore = create<AuthState>((set, get) => ({
         });
 
       await waitForRoot();
-
       router.replace("/");
     } catch (error: any) {
-      if (new AxiosError(error) && error.response) {
+      set({
+        isLoading: false,
+        isAuthenticated: false,
+        error: error.response?.data?.message || "Login failed",
+      });
+
+      if (error instanceof AxiosError && error.response) {
         return {
           error: true,
+          msg: error.response.data.message,
         };
       }
-      console.error("Login failed:", error);
-      set({ isLoading: false });
       throw error;
     }
   },

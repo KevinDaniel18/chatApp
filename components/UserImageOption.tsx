@@ -12,6 +12,8 @@ import {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { FontAwesome, Feather } from "@expo/vector-icons";
+import { useTheme } from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 export default function UserImageOption({
   modalVisible,
@@ -29,6 +31,8 @@ export default function UserImageOption({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ["30%"], []);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { theme } = useTheme();
+  const dynamicStyles = getStyles(theme);
 
   useEffect(() => {
     if (modalVisible) {
@@ -66,20 +70,24 @@ export default function UserImageOption({
     label,
     disabled = false,
   }: any) => (
-    <TouchableOpacity
-      style={[styles.button, disabled && styles.buttonDisabled]}
-      onPress={onPress}
-      disabled={disabled}
-    >
-      <View style={styles.iconContainer}>
+    <View style={{ gap: 10 }}>
+      <TouchableOpacity
+        style={[
+          styles.button,
+          disabled && styles.buttonDisabled,
+          theme === "dark" && { backgroundColor: "#000" },
+        ]}
+        onPress={onPress}
+        disabled={disabled}
+      >
         {icon === "image" ? (
           <FontAwesome name={icon} size={24} color={color} />
         ) : (
           <Feather name={icon} size={24} color={color} />
         )}
-      </View>
+      </TouchableOpacity>
       <Text style={[styles.text, { color }]}>{label}</Text>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -90,16 +98,21 @@ export default function UserImageOption({
       backdropComponent={renderBackdrop}
       onDismiss={() => setModalVisible(false)}
       handleIndicatorStyle={styles.indicator}
-      backgroundStyle={styles.bottomSheetBackground}
+      backgroundStyle={[
+        styles.bottomSheetBackground,
+        theme === "dark" && { backgroundColor: "#171718" },
+      ]}
     >
       <BottomSheetView>
         <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-          <Text style={styles.title}>Profile Picture Options</Text>
+          <Text style={[styles.title, dynamicStyles.changeTextColor]}>
+            Profile Picture Options
+          </Text>
           <View style={styles.content}>
             <OptionButton
               onPress={uploadAvatar}
               icon="image"
-              color="#4CAF50"
+              color={theme === "dark" ? "#fff" : "#000"}
               label="Select Image"
             />
             <OptionButton
@@ -118,9 +131,9 @@ export default function UserImageOption({
 
 const styles = StyleSheet.create({
   bottomSheetBackground: {
-    backgroundColor: "#f8f9fa",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    backgroundColor: "#fff",
   },
   container: {
     padding: 24,
@@ -133,23 +146,15 @@ const styles = StyleSheet.create({
   },
   button: {
     alignItems: "center",
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: "#ffffff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: "#F2F2F2",
   },
   buttonDisabled: {
     opacity: 0.5,
   },
-  iconContainer: {
-    marginBottom: 8,
-  },
   text: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
   },
   title: {

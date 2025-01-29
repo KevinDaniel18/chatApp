@@ -7,7 +7,6 @@ interface FileData {
 
 interface FileStore {
   filesPerUser: FileData[];
-  initialized: boolean;
   setFilesForUser: (receiverId: string, files: string[]) => void;
   getFilesForUser: (receiverId: string) => string[];
   clearFilesForUser: (receiverId: string) => void;
@@ -15,7 +14,6 @@ interface FileStore {
 
 const useFileStore = create<FileStore>((set, get) => ({
   filesPerUser: [],
-  initialized: false,
   
   setFilesForUser: (receiverId: string, files: string[]) => 
     set((state) => {
