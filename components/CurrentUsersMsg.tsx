@@ -15,6 +15,7 @@ import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
 import useFileStore from "@/hooks/store/fileStore";
 import * as SecureStore from "expo-secure-store";
+import useMessageStore from "@/hooks/store/messageStore";
 
 interface User {
   id: number;
@@ -29,6 +30,7 @@ export default function CurrentUsersMsg() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const { getFilesForUser, setFilesForUser } = useFileStore();
+  const { getDraftForUser, setDraftForUser } = useMessageStore();
   const { userId } = useUser();
 
   const { theme } = useTheme();
@@ -49,6 +51,8 @@ export default function CurrentUsersMsg() {
 
         try {
           const res = await getUsersSentMessages(userId!);
+          console.log("users sent messages", res.data);
+          
           setUsers(res.data);
         } catch (error) {
           console.error("error en current", error);
@@ -72,17 +76,33 @@ export default function CurrentUsersMsg() {
         }
       }
     }
-  
+
     if (users.length > 0) {
       loadFiles();
     }
   }, [users, setFilesForUser]);
-  
+
+  useEffect(() => {
+    async function loadDrafts() {
+      for (const user of users) {
+        const draftMessage = await SecureStore.getItemAsync(`draft-${user.id}`);
+        if (draftMessage) {
+          setDraftForUser(user.id.toString(), draftMessage);
+        }
+      }
+    }
+
+    if (users.length > 0) {
+      loadDrafts();
+    }
+  }, [users, setDraftForUser]);
 
   const renderItem = ({ item }: { item: User }) => {
     const pendingFiles = getFilesForUser(item.id.toString());
-    
     const hasFilesPending = pendingFiles.length > 0;
+    const draftMessage = getDraftForUser(item.id.toString());
+    const hasDraft = draftMessage.trim() !== "";
+
     return (
       <TouchableOpacity
         style={[styles.itemContainer, dynamicStyles.changeBackgroundColor]}
@@ -100,12 +120,21 @@ export default function CurrentUsersMsg() {
           <Text style={[styles.name, dynamicStyles.changeTextColor]}>
             {item.name}
           </Text>
-          <Text style={styles.email}>{item.email}</Text>
           {hasFilesPending && (
             <Text style={{ color: "#40b034", fontWeight: "700" }}>
               {pendingFiles.length === 1
                 ? `${pendingFiles.length} file pending to send`
                 : `${pendingFiles.length} pending files to send`}
+            </Text>
+          )}
+          {hasDraft && (
+            <Text style={{color: "#40b034"}}>
+              Draft:{" "}
+              <Text style={{fontStyle: "italic", color: "#808080" }}>
+                {draftMessage.length > 30
+                  ? `${draftMessage.substring(0, 25)}...`
+                  : draftMessage}
+              </Text>
             </Text>
           )}
         </View>

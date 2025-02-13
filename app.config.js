@@ -52,6 +52,12 @@ module.exports = {
           supportsPictureInPicture: true,
         },
       ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true,

@@ -10,12 +10,15 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import { useSocket } from "@/hooks/store/socketStore";
 import { useUser } from "@/hooks/user/userContext";
 import { getMessages } from "@/endpoints/endpoint";
-import { format, parseISO } from "date-fns";
-import { enUS } from "date-fns/locale";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -23,7 +26,6 @@ import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import ChatOptionModal from "./ChatOptionModal";
-import MessageImage from "./MessageImage";
 import { supabase } from "@/endpoints/supabase";
 import { showToast } from "@/constants/toast";
 import MessageList from "./MessageList";
@@ -32,37 +34,67 @@ import ProgressBar from "./ProgressBar";
 import useFileStore from "@/hooks/store/fileStore";
 import * as SecureStore from "expo-secure-store";
 import { groupMessagesByDate } from "./groupMessagesByDate";
+import useMessageStore from "@/hooks/store/messageStore";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import BottomMsgOption from "./BottomMsgOption";
+import AudioRecorder from "./AudioRecorder";
+import AudioPlayer from "./AudioPlayer";
+import { RecordingIndicator } from "./RecordingIndicator";
 
-export default function Chat({ receiverId, userName }: any) {
+export default function Chat({ receiverId, userName, isPending }: any) {
   const [sendMessage, setSendMessage] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
   const [files, setFiles] = useState<any[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [isFileRendered, setIsFileRendered] = useState(false);
   const [isDeletingFiles, setIsDeletingFiles] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [height, setHeight] = useState(100);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
     null
   );
+  const [selectedMessageDeleteId, setSelectedMessageDeleteId] = useState<
+    string | null
+  >(null);
   const [openModal, setOpenModal] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [historyVisible, setHistoryVisible] = useState(false);
   const socket = useSocket();
   const { userId } = useUser();
   const insets = useSafeAreaInsets();
   const [fadeAnim] = useState(new Animated.Value(0));
-
+  const [showDelete, setShowDelete] = useState(false);
   const { theme } = useTheme();
   const { getFilesForUser, setFilesForUser } = useFileStore();
+  const { setDraftForUser, clearDraftForUser } = useMessageStore();
   const dynamicStyles = getStyles(theme);
 
   useFocusEffect(
     useCallback(() => {
+      if (isPending && isPending === "true") {
+        Alert.alert(
+          `${userName}wants to connect with you`,
+          "do you want to proceed?",
+          [
+            {
+              text: "Cancel",
+              onPress: () => router.replace("/current-chat"),
+              style: "cancel",
+            },
+            {
+              text: "OK",
+              onPress: () => socket!.emit("enterChat", { userId, receiverId }),
+            },
+          ]
+        );
+      }
+
       if (!openModal) {
         async function loadMessages() {
           try {
             const msgData = await getMessages(userId!, Number(receiverId));
-            //console.log(msgData.data);
 
-            console.log(msgData.data.length);
             const filteredMessages = msgData.data.filter(
               (message: any) => !message.deletedForUserIds.includes(userId!)
             );
@@ -105,6 +137,11 @@ export default function Chat({ receiverId, userName }: any) {
 
     if (socket) {
       socket.on("receiveMessage", handleNewMessage);
+      socket.on("messageDeleted", (messageId) => {
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg.id !== messageId)
+        );
+      });
     }
 
     joinUserRoom();
@@ -112,6 +149,7 @@ export default function Chat({ receiverId, userName }: any) {
     return () => {
       if (socket) {
         socket.off("receiveMessage", handleNewMessage);
+        socket.off("messageDeleted");
       }
     };
   }, [receiverId, socket, userId]);
@@ -134,10 +172,6 @@ export default function Chat({ receiverId, userName }: any) {
     }
   };
 
-  const formatMessageTime = (date: string) => {
-    return format(parseISO(date), "HH:mm - d MMM yyyy", { locale: enUS });
-  };
-
   async function handleSendMessage() {
     if ((socket && sendMessage.trim() !== "") || files.length > 0) {
       const newMessage = {
@@ -149,13 +183,18 @@ export default function Chat({ receiverId, userName }: any) {
       };
 
       socket!.emit("sendMessage", newMessage);
-      socket!.emit("enterChat", { userId, receiverId });
       setSendMessage("");
       setFilesForUser(receiverId, []);
       setFiles([]);
+      clearDraftForUser(receiverId);
       await SecureStore.deleteItemAsync(`chat-files-${receiverId}`);
+      await SecureStore.deleteItemAsync(`chat-draft-${receiverId}`);
     }
   }
+
+  const handleDeleteMessage = (messageId: any) => {
+    socket!.emit("deleteMessage", messageId, userId, receiverId);
+  };
 
   const groupedMessages = groupMessagesByDate(messages);
 
@@ -168,39 +207,58 @@ export default function Chat({ receiverId, userName }: any) {
   async function deleteFiles() {
     setIsDeletingFiles(true);
     try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: session, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.session) {
         throw new Error("Debes estar autenticado para eliminar los archivos.");
       }
-
+  
       if (files.length === 0) {
         showToast("No hay archivos para eliminar.");
         return;
       }
-
-      // Prepara los archivos para ser eliminados del bucket
-      const paths = files.map((fileUrl) => fileUrl.split("/").pop());
-
-      const { error } = await supabase.storage.from("messageImg").remove(paths);
-
-      if (error) {
-        throw error;
+  
+      // Separar archivos en audios e imágenes
+      const audioFiles: string[] = [];
+      const imageFiles: string[] = [];
+  
+      files.forEach((fileUrl) => {
+        const fileName = fileUrl.split("/").pop();
+        if (fileName) {
+          if (isAudio(fileName)) {
+            audioFiles.push(fileName);
+          } else {
+            imageFiles.push(fileName);
+          }
+        }
+      });
+  
+      // Eliminar audios del bucket "recordings"
+      if (audioFiles.length > 0) {
+        const { error: audioError } = await supabase.storage.from("recordings").remove(audioFiles);
+        if (audioError) throw audioError;
       }
-
-      // Limpia el estado de los archivos
+  
+      // Eliminar imágenes del bucket "messageImg"
+      if (imageFiles.length > 0) {
+        const { error: imageError } = await supabase.storage.from("messageImg").remove(imageFiles);
+        if (imageError) throw imageError;
+      }
+  
+      // Limpiar archivos en SecureStore
       await SecureStore.deleteItemAsync(`chat-files-${receiverId}`);
-
+  
       setFilesForUser(receiverId, []);
       setFiles([]);
-      showToast("Done.");
+      showToast("Action cancelled.");
     } catch (error) {
       if (error instanceof Error) {
-        Alert.alert("Error canceling files:", error.message);
+        Alert.alert("Error al eliminar archivos", error.message);
       }
     } finally {
       setIsDeletingFiles(false);
     }
   }
+  
 
   const deleteFile = async (indexToDelete: number) => {
     setIsDeletingFiles(true);
@@ -218,9 +276,9 @@ export default function Chat({ receiverId, userName }: any) {
       const fileUrl = files[indexToDelete];
       const path = fileUrl.split("/").pop();
 
-      const { error } = await supabase.storage
-        .from("messageImg")
-        .remove([path]);
+      const bucket = isAudio(fileUrl) ? "recordings" : "messageImg";
+
+      const { error } = await supabase.storage.from(bucket).remove([path]);
 
       if (error) {
         throw error;
@@ -229,12 +287,11 @@ export default function Chat({ receiverId, userName }: any) {
       const newFiles = files.filter((_, index) => index !== indexToDelete);
       setFiles(newFiles);
       setFilesForUser(receiverId, newFiles);
-      
+
       await SecureStore.setItemAsync(
-        `chat-files-${receiverId}`, 
+        `chat-files-${receiverId}`,
         JSON.stringify(newFiles)
       );
-
 
       if (newFiles.length === 0) {
         setIsFileRendered(false);
@@ -252,6 +309,7 @@ export default function Chat({ receiverId, userName }: any) {
 
   const isImage = (fileUrl: string) => /\.(jpg|jpeg|png|gif)$/i.test(fileUrl);
   const isVideo = (fileUrl: string) => /\.(mp4|mov|avi|mkv)$/i.test(fileUrl);
+  const isAudio = (fileUrl: string) => /\.(mp3|wav|ogg|m4a)$/i.test(fileUrl);
 
   const renderedFiles = files.map((fileUrl, index) => {
     if (isImage(fileUrl)) {
@@ -265,7 +323,11 @@ export default function Chat({ receiverId, userName }: any) {
             onLoad={() => handleFileLoad(index)}
           />
           <TouchableOpacity onPress={() => deleteFile(index)}>
-            <AntDesign name="close" size={20} color={theme === "dark" ? "#fff" : "#000"} />
+            <AntDesign
+              name="close"
+              size={20}
+              color={theme === "dark" ? "#fff" : "#000"}
+            />
           </TouchableOpacity>
         </View>
       );
@@ -278,6 +340,19 @@ export default function Chat({ receiverId, userName }: any) {
           index={index}
           deleteFile={() => deleteFile(index)}
         />
+      );
+    } else if (isAudio(fileUrl)) {
+      return (
+        <View key={`audio-${index}`} style={{ flexDirection: "row", gap: 4 }}>
+          <AudioPlayer file={fileUrl} sliderWidth="80%" />
+          <TouchableOpacity onPress={() => deleteFile(index)}>
+            <AntDesign
+              name="close"
+              size={20}
+              color={theme === "dark" ? "#fff" : "#000"}
+            />
+          </TouchableOpacity>
+        </View>
       );
     }
     return null;
@@ -317,21 +392,72 @@ export default function Chat({ receiverId, userName }: any) {
     }
   }, [receiverId]);
 
+  useLayoutEffect(() => {
+    if (files.length > 0 && !isFileRendered) {
+      setIsFileRendered(true);
+    }
+  }, [files, isFileRendered]);
+
+  useEffect(() => {
+    async function loadMessage() {
+      const storedMessage = await SecureStore.getItemAsync(
+        `draft-${receiverId}`
+      );
+      if (storedMessage) {
+        setSendMessage(storedMessage);
+        setDraftForUser(receiverId, storedMessage);
+      } else {
+        setSendMessage("");
+      }
+    }
+    loadMessage();
+  }, [receiverId]);
+
+  useEffect(() => {
+    async function saveMessage() {
+      if (sendMessage.trim() !== "") {
+        await SecureStore.setItemAsync(`draft-${receiverId}`, sendMessage);
+        setDraftForUser(receiverId, sendMessage);
+      } else {
+        await SecureStore.deleteItemAsync(`draft-${receiverId}`);
+        setDraftForUser(receiverId, "");
+      }
+    }
+    saveMessage();
+  }, [sendMessage, receiverId]);
+
+  const handleDeleteClick = () => {
+    if (selectedMessageDeleteId) {
+      handleDeleteMessage(selectedMessageDeleteId);
+      setShowDelete(false);
+      setSelectedMessageDeleteId(null);
+    }
+  };
 
   return (
     <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
       <View style={[styles.header, { marginTop: insets.top }]}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <AntDesign
-              name="arrowleft"
-              size={28}
-              color={theme === "dark" ? "white" : "black"}
-            />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, dynamicStyles.changeTextColor]}>
-            {userName}
-          </Text>
+          {showDelete ? (
+            <Text
+              style={[dynamicStyles.changeTextColor, { paddingVertical: 4.5 }]}
+            >
+              Delete for everyone?
+            </Text>
+          ) : (
+            <>
+              <TouchableOpacity onPress={() => router.back()}>
+                <AntDesign
+                  name="arrowleft"
+                  size={28}
+                  color={theme === "dark" ? "white" : "black"}
+                />
+              </TouchableOpacity>
+              <Text style={[styles.headerTitle, dynamicStyles.changeTextColor]}>
+                {userName}
+              </Text>
+            </>
+          )}
         </View>
         {isDeletingFiles ? (
           <ActivityIndicator size={"small"} />
@@ -339,6 +465,19 @@ export default function Chat({ receiverId, userName }: any) {
           <TouchableOpacity onPress={deleteFiles}>
             <Text style={{ color: "#ee391f", fontWeight: "bold" }}>Cancel</Text>
           </TouchableOpacity>
+        ) : showDelete ? (
+          <View style={{ flexDirection: "row", gap: 20, alignItems: "center" }}>
+            <TouchableOpacity onPress={() => setShowDelete(false)}>
+              <Text
+                style={[{ fontWeight: "600" }, dynamicStyles.changeTextColor]}
+              >
+                Cancel
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDeleteClick}>
+              <Feather name="trash" size={24} color="#ee391f" />
+            </TouchableOpacity>
+          </View>
         ) : (
           <TouchableOpacity onPress={() => setOpenModal(true)}>
             <SimpleLineIcons
@@ -355,8 +494,12 @@ export default function Chat({ receiverId, userName }: any) {
         userId={userId}
         handleMessagePress={handleMessagePress}
         selectedMessageId={selectedMessageId}
-        formatMessageTime={formatMessageTime}
         fadeAnim={fadeAnim}
+        historyVisible={historyVisible}
+        handleDeleteMessage={handleDeleteMessage}
+        showDelete={showDelete}
+        setShowDelete={setShowDelete}
+        setSelectedMessageDeleteId={setSelectedMessageDeleteId}
       />
       <View>
         {loadingFiles && (
@@ -367,6 +510,7 @@ export default function Chat({ receiverId, userName }: any) {
             progressColor="#4caf50"
           />
         )}
+       {isRecording && <RecordingIndicator isRecording={isRecording} />}
         {files.length > 0 && (
           <ScrollView
             style={[styles.renderedFiles, dynamicStyles.changeBackgroundColor]}
@@ -381,7 +525,6 @@ export default function Chat({ receiverId, userName }: any) {
                 flexDirection: "row",
                 gap: 15,
                 justifyContent: "center",
-                
               }}
             >
               {renderedFiles}
@@ -395,6 +538,24 @@ export default function Chat({ receiverId, userName }: any) {
             { marginBottom: insets.bottom },
           ]}
         >
+          {loadingFiles ? (
+            <Text style={{ color: theme === "dark" ? "white" : "black" }}>
+              {uploadProgress.toFixed(0)}%
+            </Text>
+          ) : files.length > 0 && !isFileRendered ? (
+            <ActivityIndicator
+              size="small"
+              color={theme === "dark" ? "white" : "black"}
+            />
+          ) : (
+            <TouchableOpacity onPress={() => setModalVisible(true)}>
+              <Ionicons
+                name="add-outline"
+                size={24}
+                color={theme === "dark" ? "#fff" : "#000"}
+              />
+            </TouchableOpacity>
+          )}
           <TextInput
             value={sendMessage}
             onChangeText={setSendMessage}
@@ -408,49 +569,54 @@ export default function Chat({ receiverId, userName }: any) {
             placeholderTextColor={theme === "dark" ? "#6f6f6f" : "#000"}
             style={[
               styles.input,
-              { color: theme === "dark" ? "#fff" : "#000" },
+              {
+                color: theme === "dark" ? "#fff" : "#000",
+                height: height,
+              },
             ]}
             editable={!loadingFiles || !isFileRendered}
+            multiline
+            maxLength={1000}
+            onContentSizeChange={(e) => {
+              const contentHeight = e.nativeEvent.contentSize.height;
+              const maxHeight = 120;
+              setHeight(contentHeight > maxHeight ? maxHeight : contentHeight);
+            }}
           />
-          <View style={{ flexDirection: "row", gap: 15, alignItems: "center" }}>
-            {loadingFiles ? (
-              <Text style={{ color: theme === "dark" ? "white" : "black" }}>
-                {uploadProgress.toFixed(0)}%
-              </Text>
-            ) : files.length > 0 && !isFileRendered ? (
-              <ActivityIndicator
-                size="small"
-                color={theme === "dark" ? "white" : "black"}
-              />
-            ) : (
-              <MessageImage
+          <View>
+            {!sendMessage.trim() && files.length === 0 ? (
+              <AudioRecorder
                 setFiles={setFiles}
                 setLoadingFiles={setLoadingFiles}
                 setUploadProgress={setUploadProgress}
+                setIsRecording={setIsRecording}
               />
-            )}
-
-            <TouchableOpacity
-              onPress={handleSendMessage}
-              disabled={
-                loadingFiles ||
-                (!sendMessage.trim() && (!isFileRendered || files.length === 0))
-              }
-            >
-              <AntDesign
-                name="arrowup"
-                size={24}
-                color={
-                  theme === "dark"
-                    ? sendMessage.trim() || (files.length > 0 && isFileRendered)
-                      ? "white"
-                      : "gray"
-                    : sendMessage.trim() || (files.length > 0 && isFileRendered)
-                    ? "black"
-                    : "gray"
+            ) : (
+              <TouchableOpacity
+                onPress={handleSendMessage}
+                disabled={
+                  loadingFiles ||
+                  (!sendMessage.trim() &&
+                    (!isFileRendered || files.length === 0))
                 }
-              />
-            </TouchableOpacity>
+              >
+                <AntDesign
+                  name="arrowup"
+                  size={24}
+                  color={
+                    theme === "dark"
+                      ? sendMessage.trim() ||
+                        (files.length > 0 && isFileRendered)
+                        ? "white"
+                        : "gray"
+                      : sendMessage.trim() ||
+                        (files.length > 0 && isFileRendered)
+                      ? "black"
+                      : "gray"
+                  }
+                />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -461,6 +627,16 @@ export default function Chat({ receiverId, userName }: any) {
         receiverId={receiverId}
         messages={messages}
         setMessages={setMessages}
+      />
+      <BottomMsgOption
+        modalVisible={modalVisible || false}
+        setModalVisible={() => setModalVisible(false)}
+        setFiles={setFiles}
+        setLoadingFiles={setLoadingFiles}
+        setUploadProgress={setUploadProgress}
+        historyVisible={historyVisible}
+        setHistoryVisible={setHistoryVisible}
+        setShowDelete={setShowDelete}
       />
     </View>
   );
@@ -518,13 +694,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 10,
     backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
+    gap: 10,
   },
   input: {
     flex: 1,
-    height: 40,
-    paddingLeft: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#eee",
+    borderRadius: 10,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   timestampText: {
     fontSize: 12,

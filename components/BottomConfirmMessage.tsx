@@ -22,9 +22,9 @@ import {
 import { getStyles } from "@/constants/getStyles";
 import { AntDesign } from "@expo/vector-icons";
 import { User } from "./PendingMessages";
-import { router, useFocusEffect } from "expo-router";
-import { getUsersWithPendingMessages } from "@/endpoints/endpoint";
+import { router } from "expo-router";
 import { useUser } from "@/hooks/user/userContext";
+import { useSocket } from "@/hooks/store/socketStore";
 
 interface BottomConfirmMessageProps {
   modalVisible: boolean;
@@ -40,11 +40,16 @@ export default function BottomConfirmMessage({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ["40%"], []);
   const { theme } = useTheme();
+  const { userId } = useUser();
 
   const dynamicStyles = getStyles(theme);
+  const socket = useSocket();
 
   function navigateToChat(receiverId: number, userName: string) {
     setModalVisible(false);
+    bottomSheetModalRef.current?.dismiss();
+    
+    socket!.emit("enterChat", { userId, receiverId: selectedUser?.id });
     router.push({
       pathname: "/user/chat",
       params: { receiverId, userName },
@@ -106,11 +111,11 @@ export default function BottomConfirmMessage({
         style={[styles.container, dynamicStyles.changeBackgroundColor]}
       >
         <View style={styles.header}>
-          <TouchableOpacity style={styles.icon}>
+          <TouchableOpacity>
             <AntDesign
               name="question"
               size={20}
-              color={theme === "dark" ? "#ffffff" : "#000000"}
+              color={theme === "dark" ? "#fff": "#000"}
             />
           </TouchableOpacity>
         </View>
@@ -168,11 +173,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     marginBottom: 20,
-  },
-  icon: {
-    borderRadius: 20,
-    backgroundColor: "#f0f0f0",
-    padding: 8,
   },
   content: {
     alignItems: "center",

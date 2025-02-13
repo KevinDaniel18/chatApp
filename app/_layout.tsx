@@ -7,6 +7,7 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { UserProvider } from "@/hooks/user/userContext";
 import { ThemeProvider } from "@/hooks/theme/ThemeContext.";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function RootLayout() {
   const setRootReady = useAuthStore((state) => state.setRootReady);
@@ -35,11 +36,9 @@ export default function RootLayout() {
 
   if (isLoading) {
     return (
-      <View
-        style={[{ flex: 1, justifyContent: "center", alignItems: "center" }]}
-      >
-        <ActivityIndicator size="large" />
-      </View>
+      <ThemeProvider>
+        <LoadingScreen />
+      </ThemeProvider>
     );
   }
 

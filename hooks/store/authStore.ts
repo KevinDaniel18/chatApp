@@ -192,13 +192,13 @@ const useAuthStore = create<AuthState>((set, get) => ({
   // Logout function
   logout: async () => {
     try {
-      set({ isLoading: true });
+      set({ token: null, isAuthenticated: false, isLoading: true });
 
-      set({
-        token: null,
-        isAuthenticated: false,
-        isLoading: false,
-      });
+      // set({
+      //   token: null,
+      //   isAuthenticated: false,
+      //   isLoading: false,
+      // });
 
       await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -206,6 +206,8 @@ const useAuthStore = create<AuthState>((set, get) => ({
       await SecureStore.deleteItemAsync("USER_ID");
       await SecureStore.deleteItemAsync("ACCESS_TOKEN");
       await SecureStore.deleteItemAsync("REFRESH_TOKEN");
+
+      set({ isLoading: false });
 
       const waitForRoot = () =>
         new Promise<void>((resolve) => {
@@ -223,8 +225,6 @@ const useAuthStore = create<AuthState>((set, get) => ({
         });
 
       await waitForRoot();
-
-      set({ isLoading: false });
 
       router.replace("/sign-in");
     } catch (error) {

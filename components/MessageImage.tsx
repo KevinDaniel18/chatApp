@@ -4,13 +4,16 @@ import React, { useState } from "react";
 import { supabase } from "@/endpoints/supabase";
 import { FontAwesome } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
+import { getStyles } from "@/constants/getStyles";
 
 export default function MessageImage({
   setFiles,
   setLoadingFiles,
   setUploadProgress,
+  setModalVisible,
 }: any) {
   const { theme } = useTheme();
+  const dynamicStyles = getStyles(theme)
 
   async function uploadFile() {
     try {
@@ -19,6 +22,7 @@ export default function MessageImage({
         throw new Error("Debes estar autenticado para subir una imagen");
       }
 
+      setModalVisible(false);
       setLoadingFiles(true);
       setUploadProgress(0);
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -87,12 +91,27 @@ export default function MessageImage({
   }
 
   return (
-    <TouchableOpacity onPress={uploadFile}>
+    <TouchableOpacity
+      onPress={uploadFile}
+      style={[styles.bottom,  theme === "dark" && { backgroundColor: "#000" }]}
+    >
       <FontAwesome
         name="image"
         size={24}
         color={theme === "dark" ? "white" : "black"}
       />
+      <Text style={[{fontWeight: "700"}, dynamicStyles.changeTextColor]}>Upload</Text>
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  bottom: {
+    padding: 15,
+    borderRadius: 20,
+    backgroundColor: "#F2F2F2",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  }
+})

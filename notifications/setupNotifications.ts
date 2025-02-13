@@ -75,13 +75,14 @@ export const usePushNotifications = () => {
       Notifications.addNotificationResponseReceivedListener((response) => {
         console.log(response);
         const data = response.notification.request.content.data;
-        if (data?.senderId && data?.receiverId && data?.userName) {
+        if (data?.senderId && data?.receiverId && data?.userName && data?.isPending) {
           router.push({
             pathname: "/user/chat",
             params: {
               senderId: data.receiverId,
               receiverId: data.senderId,
               userName: data.userName,
+              isPending: data.isPending
             },
           });
         }

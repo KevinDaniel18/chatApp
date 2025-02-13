@@ -113,7 +113,7 @@ export default function Login({ login, loginWithSupabase }: LoginProps) {
         ) : (
           <>
             <Text style={[styles.title, dynamicStyles.changeTextColor]}>
-              Welcome Back! {userName && userName}
+              Welcome Back! {userName && userName.split(" ").at(0)}
             </Text>
             <Text style={{ color: "#a7a7a7" }}>Sign in to continue</Text>
           </>
