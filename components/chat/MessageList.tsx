@@ -7,11 +7,11 @@ import {
   StyleSheet,
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
-import RenderMessage from "./RenderMessage";
 import { getStyles } from "@/constants/getStyles";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { format, parseISO } from "date-fns";
 import { enUS } from "date-fns/locale";
+import RenderMessage from "../files/RenderMessage";
 
 export default function MessageList(props: any) {
   const {

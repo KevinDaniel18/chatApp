@@ -17,14 +17,16 @@ import Avatar from "./Avatar";
 import { useUser } from "@/hooks/user/userContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import BottomConfiguration from "./BottomConfiguration";
+import BottomConfiguration from "./bottomSheets/BottomConfiguration";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
+import { router } from "expo-router";
+import { pushUserProfile } from "../constants/pushUserProfile";
 
 export default function CustomDrawerContent(props: any) {
   const { logout } = useAuthStore();
   const { bottom } = useSafeAreaInsets();
-  const { userData } = useUser();
+  const { userData, userId } = useUser();
   const [modalVisible, setModalVisible] = useState(false);
   const { theme } = useTheme();
 
@@ -38,12 +40,26 @@ export default function CustomDrawerContent(props: any) {
     );
   }
 
+  const goToUserProfile = () => {
+    pushUserProfile({
+      id: userId,
+      name: userData?.name,
+      profilePicture: userData?.profilePicture,
+      likes: userData?.likes,
+      about: userData?.about,
+    });
+  };
+  
+
   return (
     <View style={[{ flex: 1 }, dynamicStyles.changeBackgroundColor]}>
       <DrawerContentScrollView {...props}>
         <View style={{ paddingBottom: 20 }}>
           <Avatar size={100} url={userData?.profilePicture!} />
-          <Text style={[styles.name, dynamicStyles.changeTextColor]}>
+          <Text
+            style={[styles.name, dynamicStyles.changeTextColor]}
+            onPress={goToUserProfile}
+          >
             {userData?.name}
           </Text>
         </View>

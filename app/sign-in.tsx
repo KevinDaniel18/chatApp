@@ -1,4 +1,4 @@
-import Login from "@/components/Login";
+import Login from "@/components/auth/Login";
 import useAuthStore from "@/hooks/store/authStore";
 
 export default function LoginScreen() {

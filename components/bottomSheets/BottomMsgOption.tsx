@@ -13,7 +13,7 @@ import {
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
-import MessageImage from "./MessageImage";
+import MessageImage from "../chat/MessageImage";
 import { FontAwesome } from "@expo/vector-icons";
 
 export default function BottomMsgOption({

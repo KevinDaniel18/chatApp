@@ -13,7 +13,7 @@ import { useUser } from "@/hooks/user/userContext";
 import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
-import BottomConfirmMessage from "./BottomConfirmMessage";
+import BottomConfirmMessage from "../bottomSheets/BottomConfirmMessage";
 import { useSocket } from "@/hooks/store/socketStore";
 
 export interface User {

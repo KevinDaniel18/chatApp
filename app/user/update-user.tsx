@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   TextInput,
   View,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Keyboard,
+  BackHandler,
 } from "react-native";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
@@ -55,6 +56,20 @@ export default function UpdateUser() {
       console.error(error);
     }
   }
+
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        router.back();
+        return true;
+      }
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
   return (
     <View style={[styles.container]}>
       <View style={[styles.header, { marginTop: insets.top }]}>

@@ -13,6 +13,8 @@ interface UserData {
   name: string;
   email: string;
   profilePicture: string;
+  likes: number;
+  about: string
 }
 
 interface UserContextType {
@@ -47,6 +49,8 @@ export const UserProvider: React.FC<UserProvider> = ({ children }) => {
         name: user.data.name,
         email: user.data.email,
         profilePicture: user.data.profilePicture,
+        likes: user.data.likes,
+        about: user.data.about
       });
       setProfilePicture(user.data.profilePicture);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

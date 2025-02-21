@@ -98,13 +98,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 8,
     backgroundColor: "white",
   },
   content: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    height: 40,
   },
   title: {
     fontSize: 18,
@@ -121,10 +121,11 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
     marginRight: 8,
     backgroundColor: "#f5f5f5",
     borderRadius: 8,
+    fontSize: 16,
+    height: 40,
   },
 });

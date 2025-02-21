@@ -40,6 +40,10 @@ export function getLikedUsers(userId: number) {
   });
 }
 
+export function getUsersWhoLiked(userId: number) {
+  return instance.get("/user/usersWhoLiked", { params: { userId } });
+}
+
 export function removeProfilePicture(userId: number) {
   return instance.post("/user/deleteProfilePicture", { userId });
 }

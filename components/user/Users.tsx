@@ -21,18 +21,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { SearchContext } from "@/hooks/search/searchContext";
-import { router, useFocusEffect } from "expo-router";
+import { Link, router, useFocusEffect } from "expo-router";
 import { useUser } from "@/hooks/user/userContext";
 import { useSocket } from "@/hooks/store/socketStore";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
-import BottomSendMsg from "./BottomSendMsg";
+import BottomSendMsg from "../bottomSheets/BottomSendMsg";
+import { pushUserProfile } from "../../constants/pushUserProfile";
 
 export interface UsersProps {
   id: number;
   name: string;
   profilePicture: string;
   likes: number;
+  about: string;
 }
 
 type ItemProps = {
@@ -40,6 +42,7 @@ type ItemProps = {
   name: string;
   profilePicture: string;
   likes: number;
+  about: string;
 };
 
 export default function Users() {
@@ -55,7 +58,6 @@ export default function Users() {
   const { theme } = useTheme();
   const dynamicStyles = getStyles(theme);
 
-
   useFocusEffect(
     useCallback(() => {
       if (!userId) return;
@@ -68,7 +70,9 @@ export default function Users() {
 
           const likedRes = await getLikedUsers(userId!);
 
-          const likedUsersIds = likedRes.data;
+          const likedUsersIds = likedRes.data.map(
+            (user: { id: any }) => user.id
+          );
 
           const likedUsersState = likedUsersIds.reduce(
             (acc: { [x: string]: boolean }, id: string | number) => {
@@ -77,6 +81,9 @@ export default function Users() {
             },
             {}
           );
+
+          console.log("Likes", likedRes.data);
+          
 
           setLikedUsers(likedUsersState);
         } catch (error) {
@@ -88,7 +95,6 @@ export default function Users() {
       fetchUsers();
     }, [userId])
   );
-
 
   async function toggleLike(likedId: number) {
     try {
@@ -133,10 +139,16 @@ export default function Users() {
 
   const paddedUsers = [...filteredUsers];
   if (filteredUsers.length % 2 !== 0) {
-    paddedUsers.push({ id: -1, name: "", profilePicture: "", likes: 0 });
+    paddedUsers.push({
+      id: -1,
+      name: "",
+      profilePicture: "",
+      likes: 0,
+      about: "",
+    });
   }
 
-  const Item = ({ id, name, profilePicture, likes }: ItemProps) => {
+  const Item = ({ id, name, profilePicture, likes, about }: ItemProps) => {
     const itemStyle: StyleProp<ViewStyle> =
       filteredUsers.length === 1
         ? {
@@ -175,13 +187,15 @@ export default function Users() {
         <Text
           style={[styles.name, dynamicStyles.changeTextColor]}
           numberOfLines={1}
+          onPress={() => pushUserProfile({id, name, profilePicture, likes, about })}
         >
           {name}
         </Text>
+
         <View style={styles.icons}>
           <TouchableOpacity
             onPress={() => {
-              setSelectedUser({ id, name, profilePicture, likes });
+              setSelectedUser({ id, name, profilePicture, likes, about });
               setModalVisible(true);
             }}
           >
@@ -238,6 +252,7 @@ export default function Users() {
                 profilePicture={item.profilePicture}
                 id={item.id}
                 likes={item.likes}
+                about={item.about}
               />
             )
           }

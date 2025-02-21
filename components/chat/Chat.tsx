@@ -29,17 +29,17 @@ import ChatOptionModal from "./ChatOptionModal";
 import { supabase } from "@/endpoints/supabase";
 import { showToast } from "@/constants/toast";
 import MessageList from "./MessageList";
-import VideoItem from "./VideoItem";
-import ProgressBar from "./ProgressBar";
+import VideoItem from "../files/VideoItem";
+import ProgressBar from "../ProgressBar";
 import useFileStore from "@/hooks/store/fileStore";
 import * as SecureStore from "expo-secure-store";
 import { groupMessagesByDate } from "./groupMessagesByDate";
 import useMessageStore from "@/hooks/store/messageStore";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import BottomMsgOption from "./BottomMsgOption";
-import AudioRecorder from "./AudioRecorder";
-import AudioPlayer from "./AudioPlayer";
-import { RecordingIndicator } from "./RecordingIndicator";
+import BottomMsgOption from "../bottomSheets/BottomMsgOption";
+import AudioRecorder from "../files/AudioRecorder";
+import AudioPlayer from "../files/AudioPlayer";
+import { RecordingIndicator } from "../files/RecordingIndicator";
 
 export default function Chat({ receiverId, userName, isPending }: any) {
   const [sendMessage, setSendMessage] = useState("");
@@ -561,9 +561,9 @@ export default function Chat({ receiverId, userName, isPending }: any) {
             onChangeText={setSendMessage}
             placeholder={
               loadingFiles
-                ? "Loading files..."
+                ? "Loading file"
                 : files.length > 0 && !isFileRendered
-                ? "Rendering files..."
+                ? "Rendering file"
                 : "Write a message..."
             }
             placeholderTextColor={theme === "dark" ? "#6f6f6f" : "#000"}

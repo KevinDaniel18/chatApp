@@ -17,12 +17,13 @@ import { useSocket } from "@/hooks/store/socketStore";
 import { useUser } from "@/hooks/user/userContext";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
-import { UsersProps } from "./Users";
+import { UsersProps } from "../Users";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { getUsersWithPendingMessages } from "@/endpoints/endpoint";
-import { showToast } from "../constants/toast";
+import { showToast } from "../../constants/toast";
+import { navigateToChat } from "../../constants/navigateToChat";
 
 interface SendMessageModalProps {
   modalVisible: boolean;
@@ -56,13 +57,6 @@ export default function BottomSendMsg({
     duration: 200,
     useNativeDriver: true,
   });
-
-  function navigateToChat(receiverId: number, userName: string) {
-    router.push({
-      pathname: "/user/chat",
-      params: { receiverId, userName },
-    });
-  }
 
   const panResponder = useRef(
     PanResponder.create({
@@ -134,7 +128,6 @@ export default function BottomSendMsg({
               (user: { id: number | undefined }) => user.id === selectedUser?.id
             )?.id || null;
           setFirstMsg(pendingUserId);
-          console.log(pendingUserId);
 
           return pendingUserId;
         }
@@ -189,14 +182,14 @@ export default function BottomSendMsg({
           {
             text: "OK",
             onPress: () => {
-              sendMessageToSocket(); // Envía el mensaje al aceptar
+              sendMessageToSocket(); 
               navigateToChat(selectedUser?.id!, selectedUser?.name!);
             },
           },
         ]
       );
     } else {
-      sendMessageToSocket(); // Si no hay mensaje pendiente, envía directamente
+      sendMessageToSocket();
     }
   }
 

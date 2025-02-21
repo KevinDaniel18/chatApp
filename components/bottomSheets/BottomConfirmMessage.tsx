@@ -21,7 +21,7 @@ import {
 } from "@gorhom/bottom-sheet";
 import { getStyles } from "@/constants/getStyles";
 import { AntDesign } from "@expo/vector-icons";
-import { User } from "./PendingMessages";
+import { User } from "../chat/PendingMessages";
 import { router } from "expo-router";
 import { useUser } from "@/hooks/user/userContext";
 import { useSocket } from "@/hooks/store/socketStore";

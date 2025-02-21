@@ -35,6 +35,7 @@ export default function MessageImage({
 
       if (result.canceled || !result.assets || result.assets.length === 0) {
         console.log("User cancelled image picker.");
+        setLoadingFiles(false);
         return;
       }
 
@@ -80,7 +81,7 @@ export default function MessageImage({
         })
       );
 
-      console.log("archivos:", fileUrls);
+      console.log("archivos:", fileUrls.length);
       setFiles((prevFiles: string[]) => [...prevFiles, ...fileUrls]);
     } catch (error) {
       console.error("error", error);
