@@ -22,6 +22,30 @@ interface AuthState {
   setRootReady: (ready: boolean) => void;
 }
 
+async function supaLogin(email: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: process.env.EXPO_PUBLIC_SUPABASE_USER_PASSWORD!,
+  });
+  if (error) {
+    console.error("Error al iniciar sesión con Supabase:", error.message);
+    return { error: true };
+  }
+
+  const accessToken = data.session?.access_token;
+  const refreshToken = data.session?.refresh_token;
+
+  if (!accessToken || !refreshToken) {
+    console.error("Error: No se recibieron tokens válidos.");
+    return { error: true };
+  }
+
+  await SecureStore.setItemAsync("ACCESS_TOKEN", accessToken);
+  await SecureStore.setItemAsync("REFRESH_TOKEN", refreshToken);
+
+  return { error: false };
+}
+
 const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   isLoading: true,
@@ -70,7 +94,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
   register: async (name: string, email: string, password: string) => {
     try {
-      set({ error: null });
+      set({ error: null, isLoading: true });
       await authRegister(name, email, password);
 
       const { error } = await supabase.auth.signUp({
@@ -79,7 +103,35 @@ const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       if (error) {
-        console.error("error autenticando en supabase", error.message);
+        if (
+          error.message.includes("already registered") ||
+          error.status === 400
+        ) {
+          console.warn(
+            "El usuario ya está registrado en Supabase. Iniciando sesión..."
+          );
+
+          // Si el usuario ya existe, iniciar sesión automáticamente
+          const { error: signInError } = await supabase.auth.signInWithPassword(
+            {
+              email,
+              password,
+            }
+          );
+
+          if (signInError) {
+            console.error(
+              "Error iniciando sesión en Supabase:",
+              signInError.message
+            );
+            set({ error: null, isLoading: false });
+            return;
+          }
+        } else {
+          console.error("Error autenticando en Supabase:", error.message);
+          set({ error: null, isLoading: false });
+          return;
+        }
       }
 
       set({ isLoading: false });
@@ -95,7 +147,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
 
       await waitForRoot();
 
-      router.replace("/sign-in");
+      //router.replace("/sign-in");
     } catch (error: any) {
       set({
         isLoading: false,
@@ -113,7 +165,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // Login function
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string | undefined) => {
     try {
       set({ isLoading: true, error: null });
 
@@ -168,7 +220,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
   loginWithSupabase: async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      password,
+      password: password ?? process.env.EXPO_PUBLIC_SUPABASE_USER_PASSWORD!,
     });
     if (error) {
       console.error("Error al iniciar sesión con Supabase:", error.message);
@@ -206,6 +258,7 @@ const useAuthStore = create<AuthState>((set, get) => ({
       await SecureStore.deleteItemAsync("USER_ID");
       await SecureStore.deleteItemAsync("ACCESS_TOKEN");
       await SecureStore.deleteItemAsync("REFRESH_TOKEN");
+      await supabase.auth.signOut();
 
       set({ isLoading: false });
 

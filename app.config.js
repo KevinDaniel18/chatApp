@@ -55,9 +55,24 @@ module.exports = {
       [
         "expo-av",
         {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
-        }
-      ]
+          microphonePermission:
+            "Allow $(PRODUCT_NAME) to access your microphone.",
+        },
+      ],
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          cameraPermission: "Allow $(PRODUCT_NAME) to access your camera",
+          microphonePermission:
+            "Allow $(PRODUCT_NAME) to access your microphone",
+        },
+      ],
+      [
+        "expo-local-authentication",
+        {
+          faceIDPermission: "Allow $(PRODUCT_NAME) to use Face ID.",
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

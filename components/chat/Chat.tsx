@@ -29,17 +29,17 @@ import ChatOptionModal from "./ChatOptionModal";
 import { supabase } from "@/endpoints/supabase";
 import { showToast } from "@/constants/toast";
 import MessageList from "./MessageList";
-import VideoItem from "../files/VideoItem";
+import VideoItem from "../media/VideoItem";
 import ProgressBar from "../ProgressBar";
 import useFileStore from "@/hooks/store/fileStore";
 import * as SecureStore from "expo-secure-store";
 import { groupMessagesByDate } from "./groupMessagesByDate";
 import useMessageStore from "@/hooks/store/messageStore";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import BottomMsgOption from "../bottomSheets/BottomMsgOption";
-import AudioRecorder from "../files/AudioRecorder";
-import AudioPlayer from "../files/AudioPlayer";
-import { RecordingIndicator } from "../files/RecordingIndicator";
+import AudioRecorder from "../media/AudioRecorder";
+import AudioPlayer from "../media/AudioPlayer";
+import { RecordingIndicator } from "../media/RecordingIndicator";
 
 export default function Chat({ receiverId, userName, isPending }: any) {
   const [sendMessage, setSendMessage] = useState("");
@@ -207,20 +207,21 @@ export default function Chat({ receiverId, userName, isPending }: any) {
   async function deleteFiles() {
     setIsDeletingFiles(true);
     try {
-      const { data: session, error: sessionError } = await supabase.auth.getSession();
+      const { data: session, error: sessionError } =
+        await supabase.auth.getSession();
       if (sessionError || !session?.session) {
         throw new Error("Debes estar autenticado para eliminar los archivos.");
       }
-  
+
       if (files.length === 0) {
         showToast("No hay archivos para eliminar.");
         return;
       }
-  
+
       // Separar archivos en audios e imágenes
       const audioFiles: string[] = [];
       const imageFiles: string[] = [];
-  
+
       files.forEach((fileUrl) => {
         const fileName = fileUrl.split("/").pop();
         if (fileName) {
@@ -231,22 +232,26 @@ export default function Chat({ receiverId, userName, isPending }: any) {
           }
         }
       });
-  
+
       // Eliminar audios del bucket "recordings"
       if (audioFiles.length > 0) {
-        const { error: audioError } = await supabase.storage.from("recordings").remove(audioFiles);
+        const { error: audioError } = await supabase.storage
+          .from("recordings")
+          .remove(audioFiles);
         if (audioError) throw audioError;
       }
-  
+
       // Eliminar imágenes del bucket "messageImg"
       if (imageFiles.length > 0) {
-        const { error: imageError } = await supabase.storage.from("messageImg").remove(imageFiles);
+        const { error: imageError } = await supabase.storage
+          .from("messageImg")
+          .remove(imageFiles);
         if (imageError) throw imageError;
       }
-  
+
       // Limpiar archivos en SecureStore
       await SecureStore.deleteItemAsync(`chat-files-${receiverId}`);
-  
+
       setFilesForUser(receiverId, []);
       setFiles([]);
       showToast("Action cancelled.");
@@ -258,7 +263,6 @@ export default function Chat({ receiverId, userName, isPending }: any) {
       setIsDeletingFiles(false);
     }
   }
-  
 
   const deleteFile = async (indexToDelete: number) => {
     setIsDeletingFiles(true);
@@ -437,7 +441,7 @@ export default function Chat({ receiverId, userName, isPending }: any) {
   return (
     <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
       <View style={[styles.header, { marginTop: insets.top }]}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           {showDelete ? (
             <Text
               style={[dynamicStyles.changeTextColor, { paddingVertical: 4.5 }]}
@@ -459,6 +463,7 @@ export default function Chat({ receiverId, userName, isPending }: any) {
             </>
           )}
         </View>
+
         {isDeletingFiles ? (
           <ActivityIndicator size={"small"} />
         ) : files.length > 0 && isFileRendered ? (
@@ -510,7 +515,7 @@ export default function Chat({ receiverId, userName, isPending }: any) {
             progressColor="#4caf50"
           />
         )}
-       {isRecording && <RecordingIndicator isRecording={isRecording} />}
+        {isRecording && <RecordingIndicator isRecording={isRecording} />}
         {files.length > 0 && (
           <ScrollView
             style={[styles.renderedFiles, dynamicStyles.changeBackgroundColor]}

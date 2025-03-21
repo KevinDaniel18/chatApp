@@ -81,6 +81,8 @@ export default function UserProfile() {
       likes: Number(likes),
       about: Array.isArray(about) ? about[0] : about,
     });
+    console.log(profilePicture);
+    
   }, [id, name, profilePicture, likes, about]);
 
   useEffect(() => {

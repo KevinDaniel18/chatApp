@@ -13,14 +13,13 @@ import {
 } from "@react-navigation/drawer";
 import useAuthStore from "@/hooks/store/authStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Avatar from "./Avatar";
+import Avatar from "./user/Avatar";
 import { useUser } from "@/hooks/user/userContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import BottomConfiguration from "./bottomSheets/BottomConfiguration";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
-import { router } from "expo-router";
 import { pushUserProfile } from "../constants/pushUserProfile";
 
 export default function CustomDrawerContent(props: any) {
@@ -49,7 +48,14 @@ export default function CustomDrawerContent(props: any) {
       about: userData?.about,
     });
   };
-  
+
+  async function onLogout() {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Error during logout", error);
+    }
+  }
 
   return (
     <View style={[{ flex: 1 }, dynamicStyles.changeBackgroundColor]}>
@@ -69,7 +75,7 @@ export default function CustomDrawerContent(props: any) {
         <DrawerItem
           label={"Logout"}
           labelStyle={{ color: theme === "dark" ? "#fff" : "#000" }}
-          onPress={logout}
+          onPress={onLogout}
           icon={() => (
             <MaterialIcons
               name="exit-to-app"

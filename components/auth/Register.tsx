@@ -10,21 +10,21 @@ import {
   BackHandler,
 } from "react-native";
 import React, { useEffect, useState } from "react";
-import useAuthStore from "@/hooks/store/authStore";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
 import { showToast } from "@/constants/toast";
-import { AntDesign } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 interface RegisterProps {
   register: (name: string, email: string, password: string) => Promise<any>;
 }
-export default function Register({ register }: RegisterProps) {
+export default function Register({
+  register,
+}: RegisterProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
   const { theme } = useTheme();
 
   const dynamicStyles = getStyles(theme);
@@ -46,21 +46,22 @@ export default function Register({ register }: RegisterProps) {
       showToast("Please enter name, email and password");
       return;
     }
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const res = await register(name, email, password);
       if (res && res.error) {
         showToast(res.msg);
         return;
       }
+      showToast("Account created successfully")
     } catch (error: any) {
-      Alert.alert(
-        "Register failed, Please check your credentials and try again"
-      );
-    }finally{
-      setIsLoading(false)
+      console.error(error);
+      
+    } finally {
+      setIsLoading(false);
     }
   }
+
   return (
     <View style={[styles.container, dynamicStyles.changeBackgroundColor]}>
       <View style={styles.header}>
@@ -130,35 +131,16 @@ export default function Register({ register }: RegisterProps) {
         </TouchableOpacity>
       </View>
 
-      <View style={{ marginVertical: 50, alignSelf: "center" }}>
-        <Text
-          style={[
-            { marginBottom: 10, fontWeight: "600" },
-            dynamicStyles.changeTextColor,
-          ]}
-        >
-          Or via
-        </Text>
-        <TouchableOpacity
-          style={{
-            backgroundColor: "#E3483E",
-            padding: 8,
-            borderRadius: 20,
-            alignSelf: "center",
-          }}
-        >
-          <AntDesign name="google" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      
 
-      <TouchableOpacity style={{ alignSelf: "center" }}>
+      <TouchableOpacity style={{ alignSelf: "center", marginTop: 20 }}>
         <Text style={[dynamicStyles.changeTextColor]}>
           Already have an account?{" "}
           <Text
             style={{ color: "#6ED5A9" }}
             onPress={() => router.navigate("/sign-in")}
           >
-            Sign Up
+            Sign In
           </Text>
         </Text>
       </TouchableOpacity>

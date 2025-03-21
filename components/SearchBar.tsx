@@ -14,8 +14,8 @@ import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
 
 export default function SearchBar({ navigation, options }: any) {
-  const [showSearch, setShowSearch] = useState(false);
-  const { searchText, setSearchText } = useContext(SearchContext);
+  const { searchText, setSearchText, showSearch, setShowSearch } =
+    useContext(SearchContext);
 
   const { theme } = useTheme();
   const dynamicStyles = getStyles(theme);

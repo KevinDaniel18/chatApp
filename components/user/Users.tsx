@@ -8,26 +8,25 @@ import {
   TouchableOpacity,
   StyleProp,
   ViewStyle,
-  ActivityIndicator,
 } from "react-native";
 import React, { useCallback, useContext, useState } from "react";
 import {
   getAllUsers,
   getLikedUsers,
-  getUsersWithPendingMessages,
   likeUser,
 } from "@/endpoints/endpoint";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { SearchContext } from "@/hooks/search/searchContext";
-import { Link, router, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useUser } from "@/hooks/user/userContext";
 import { useSocket } from "@/hooks/store/socketStore";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
 import BottomSendMsg from "../bottomSheets/BottomSendMsg";
 import { pushUserProfile } from "../../constants/pushUserProfile";
+import LoadingScreen from "../LoadingScreen";
 
 export interface UsersProps {
   id: number;
@@ -233,7 +232,7 @@ export default function Users() {
       style={[styles.container, dynamicStyles.changeBackgroundColor]}
     >
       {loading ? (
-        <ActivityIndicator size="large" style={{ flex: 1, marginTop: 20 }} />
+       <LoadingScreen/>
       ) : filteredUsers.length === 0 ? (
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}

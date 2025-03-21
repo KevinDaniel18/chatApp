@@ -27,6 +27,7 @@ export default function DrawerLayout() {
 
   const { theme } = themeContext;
   const dynamicStyles = getStyles(theme);
+
   useEffect(() => {
     async function expoPush() {
       try {
@@ -74,7 +75,6 @@ export default function DrawerLayout() {
                 drawerIcon: ({ size, color }) => (
                   <AntDesign name="home" size={size} color={color} />
                 ),
-                header: (props) => <SearchBar {...props} />,
               }}
             />
             <Drawer.Screen

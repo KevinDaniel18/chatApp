@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { TouchableOpacity, Text, View } from "react-native";
 import Slider from "@react-native-community/slider";
 
-export default function AudioPlayer({ file, sliderWidth = "100%"  }: any) {
+export default function AudioPlayer({ file, sliderWidth = "100%" }: any) {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [position, setPosition] = useState(0);
@@ -14,34 +14,31 @@ export default function AudioPlayer({ file, sliderWidth = "100%"  }: any) {
   const [isSeeking, setIsSeeking] = useState(false);
   const animationFrameRef = useRef<number | null>(null);
 
-
   const { theme } = useTheme();
-  const dynamicStyles = getStyles(theme);
+  const dynamicStyles: any = getStyles(theme);
 
   useEffect(() => {
-  
     const updatePosition = async () => {
       if (isPlaying && sound) {
         const status = await sound.getStatusAsync();
-        if (status.isLoaded && !status.didJustFinish) { 
+        if (status.isLoaded && !status.didJustFinish) {
           setPosition(status.positionMillis);
           setDuration(status.durationMillis || 1);
         }
       }
       animationFrameRef.current = requestAnimationFrame(updatePosition);
     };
-  
+
     if (isPlaying) {
       animationFrameRef.current = requestAnimationFrame(updatePosition);
     }
-  
+
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
   }, [isPlaying, sound]);
-  
 
   useEffect(() => {
     return sound
@@ -58,15 +55,13 @@ export default function AudioPlayer({ file, sliderWidth = "100%"  }: any) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
       }
-      await sound?.setPositionAsync(0); 
+      await sound?.setPositionAsync(0);
     } else {
       setPosition(status.positionMillis);
     }
   };
-  
-  
-  const togglePlay = async () => {
 
+  const togglePlay = async () => {
     if (isSeeking) return;
 
     if (!sound) {
@@ -79,10 +74,13 @@ export default function AudioPlayer({ file, sliderWidth = "100%"  }: any) {
       setIsPlaying(true);
     } else {
       const status = await sound.getStatusAsync();
-      
+
       if (status.isLoaded) {
-        if (status.didJustFinish || status.positionMillis >= status.durationMillis!) {
-          await sound.setPositionAsync(0); 
+        if (
+          status.didJustFinish ||
+          status.positionMillis >= status.durationMillis!
+        ) {
+          await sound.setPositionAsync(0);
           await sound.playAsync();
         } else {
           if (isPlaying) {
@@ -95,7 +93,6 @@ export default function AudioPlayer({ file, sliderWidth = "100%"  }: any) {
       }
     }
   };
-  
 
   const seekAudio = async (value: number) => {
     if (sound) {
@@ -104,23 +101,19 @@ export default function AudioPlayer({ file, sliderWidth = "100%"  }: any) {
       setIsSeeking(false);
     }
   };
-  
+
   const handleSlidingStart = async () => {
     if (sound) {
       await sound.pauseAsync();
-      setIsPlaying(false); 
+      setIsPlaying(false);
       setIsSeeking(true);
     }
   };
-  
-  
 
   return (
     <View>
-      <View style={{ flexDirection: "row", alignItems: "center",}}>
-        <TouchableOpacity
-          onPress={togglePlay}
-        >
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <TouchableOpacity onPress={togglePlay}>
           <FontAwesome6
             name={isPlaying ? "pause" : "play"}
             size={24}

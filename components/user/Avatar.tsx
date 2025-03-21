@@ -29,7 +29,7 @@ export default function Avatar({ url, size = 150 }: Props) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const { userId } = useUser();
+  const { userId, fetchUser } = useUser();
   const avatarSize = { height: size, width: size };
 
   useEffect(() => {
@@ -142,6 +142,7 @@ export default function Avatar({ url, size = 150 }: Props) {
         //   ...prev!,
         //   profilePicture: publicUrl,
         // }));
+        fetchUser()
         showToast("Profile photo uploaded successfully");
       }
     } catch (error) {
@@ -186,7 +187,7 @@ export default function Avatar({ url, size = 150 }: Props) {
       await removeProfilePicture(userId!);
       
       setAvatarUrl(null);
-    
+      fetchUser()
       Alert.alert("Foto de perfil eliminada con éxito.");
     } catch (error) {
       if (error instanceof Error) {

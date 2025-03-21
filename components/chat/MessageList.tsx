@@ -11,7 +11,7 @@ import { getStyles } from "@/constants/getStyles";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { format, parseISO } from "date-fns";
 import { enUS } from "date-fns/locale";
-import RenderMessage from "../files/RenderMessage";
+import RenderMessage from "../media/RenderMessage";
 
 export default function MessageList(props: any) {
   const {

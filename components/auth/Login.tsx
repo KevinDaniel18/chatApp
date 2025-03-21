@@ -54,7 +54,7 @@ export default function Login({ login, loginWithSupabase }: LoginProps) {
     }
 
     try {
-      const res = await login(email, password); //llamo al login de authStore
+      const res = await login(email, password);
       if (res && res.error) {
         showToast(res.msg);
         return;
@@ -65,7 +65,7 @@ export default function Login({ login, loginWithSupabase }: LoginProps) {
       }
       setIsFirstTime(false);
     } catch (error: any) {
-      Alert.alert("Login failed, Please check your credentials and try again");
+      console.error(error);
     }
   }
 
@@ -160,28 +160,7 @@ export default function Login({ login, loginWithSupabase }: LoginProps) {
         </TouchableOpacity>
       </View>
 
-      <View style={{ marginVertical: 50, alignSelf: "center" }}>
-        <Text
-          style={[
-            { marginBottom: 10, fontWeight: "600" },
-            dynamicStyles.changeTextColor,
-          ]}
-        >
-          Or via
-        </Text>
-        <TouchableOpacity
-          style={{
-            backgroundColor: "#E3483E",
-            padding: 8,
-            borderRadius: 20,
-            alignSelf: "center",
-          }}
-        >
-          <AntDesign name="google" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={{ alignSelf: "center" }}>
+      <TouchableOpacity style={{ alignSelf: "center", marginTop: 20 }}>
         <Text style={[dynamicStyles.changeTextColor]}>
           Don't have an account?{" "}
           <Text

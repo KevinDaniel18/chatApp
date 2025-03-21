@@ -17,13 +17,13 @@ import { useSocket } from "@/hooks/store/socketStore";
 import { useUser } from "@/hooks/user/userContext";
 import { useTheme } from "@/hooks/theme/ThemeContext.";
 import { getStyles } from "@/constants/getStyles";
-import { UsersProps } from "../Users";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { getUsersWithPendingMessages } from "@/endpoints/endpoint";
 import { showToast } from "../../constants/toast";
 import { navigateToChat } from "../../constants/navigateToChat";
+import { UsersProps } from "../user/Users";
 
 interface SendMessageModalProps {
   modalVisible: boolean;

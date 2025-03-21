@@ -1,7 +1,7 @@
 import useAuthStore from "@/hooks/store/authStore";
 import { Stack, router } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, StatusBar, View } from "react-native";
+import { StatusBar } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -71,6 +71,10 @@ export default function RootLayout() {
                 />
                 <Stack.Screen
                   name="user/user-profile"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="media/view-post"
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen

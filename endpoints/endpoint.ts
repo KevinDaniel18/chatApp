@@ -1,11 +1,23 @@
 import axios from "axios";
 const instance = axios.create({ baseURL: process.env.EXPO_PUBLIC_API_URL });
 
-export function authRegister(name: string, email: string, password: string) {
+export function authRegister(
+  name: string,
+  email: string,
+  password: string | undefined
+) {
   return instance.post("/auth/register", { name, email, password });
 }
-export function authLogin(email: string, password: string) {
+export function authLogin(email: string, password: string | undefined) {
   return instance.post("/auth/login", { email, password });
+}
+
+export function authGoogleRegister(name: string, email: string) {
+  return instance.post("/auth/google-register", { name, email });
+}
+
+export function authGoogleLogin(email: string) {
+  return instance.post("/auth/google-login", { email });
 }
 
 export function updateProfilePicture(userId: number, profilePicture: string) {
@@ -72,4 +84,22 @@ export function deleteMessageForUser(userId: number, receiverId: number) {
 
 export function updateUser(userId: number, data: object) {
   return instance.post("/user/update-user", { userId, ...data });
+}
+
+export function deleteUser(
+  userId: number,
+  password?: string,
+  isBiometric?: boolean
+) {
+  return instance.delete(`/user/delete-user/${userId}`, {
+    data: { password, isBiometric },
+  });
+}
+
+export function createPost(data: object) {
+  return instance.post("/posts/create-posts", data);
+}
+
+export function getPosts() {
+  return instance.get("/posts/get-posts");
 }
